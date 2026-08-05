@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register Farmer — G2F</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/auth.js"></script>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><div class="nav-logo">🌾</div> G2F <span>Direct</span></div>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/register" class="active">Register</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/agent">Agent</a>
+    <a href="/sms-preview">SMS Preview</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page" style="padding-top:0;padding-bottom:0">
+    <h1>🪪 Farmer Registration</h1>
+    <p>LGA Enrolment Officers use this form to register verified smallholder farmers</p>
+  </div>
+</div>
+
+<div class="page">
+  <div style="max-width: 720px; margin: 0 auto;">
+
+    <div id="errorBox"   class="alert alert-error   hidden"></div>
+    <div id="successBox" class="alert alert-success hidden"></div>
+
+    <!-- REGISTRATION FORM -->
+    <div class="card" id="formCard">
+      <div class="card-title"><div class="icon">📝</div> Farmer Details</div>
+      <div class="alert alert-warning mb-4">
+        ⚠️ Ensure the farmer is physically present and NIN has been confirmed before submitting.
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="nin">NIN (11 digits) *</label>
+          <input type="text" id="nin" maxlength="11" placeholder="e.g. 12345678901" />
+        </div>
+        <div class="form-group">
+          <label for="full_name">Full Name *</label>
+          <input type="text" id="full_name" placeholder="e.g. Ukasha Zakariyya" />
+        </div>
+        <div class="form-group">
+          <label for="phone_number">Phone Number *</label>
+          <input type="text" id="phone_number" placeholder="e.g. 08012345678" />
+        </div>
+        <div class="form-group">
+          <label for="ward">Ward</label>
+          <select id="ward">
+            <option value="">-- Select Ward --</option>
+            <option>Basirka</option>
+            <option>Dingaya</option>
+            <option>Fagam</option>
+            <option>Farin Dutse</option>
+            <option>Gwaram Tsohuwa</option>
+            <option>Kila</option>
+            <option>Kwandiko</option>
+            <option>Maruta</option>
+            <option>Sara</option>
+            <option>Tsangarwa</option>
+            <option>Zandam Nagog</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="village">Village</label>
+          <input type="text" id="village" placeholder="e.g. Fandufawa" />
+        </div>
+        <div class="form-group">
+          <label for="crop_type">Primary Crop</label>
+          <select id="crop_type">
+            <option value="">-- Select Crop --</option>
+            <option>Millet</option>
+            <option>Sorghum</option>
+            <option>Rice</option>
+            <option>Beans</option>
+            <option>Groundnuts</option>
+            <option>Cassava</option>
+            <option>Vegetables</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label for="acreage_ha">Farm Size (Hectares) *</label>
+          <input type="number" id="acreage_ha" min="0.1" max="20" step="0.1" placeholder="e.g. 1.5" />
+          <small class="text-gray">Bags allocated = 2 bags per hectare (minimum 1 bag)</small>
+        </div>
+        <div class="form-group full" style="margin-top:10px;">
+          <label style="display:flex; align-items:center; gap:8px; font-weight:normal;">
+            <input type="checkbox" id="pendingCheckbox" style="width:18px;height:18px;"> 
+            NIN could not be verified — save as pending for review
+          </label>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <button class="btn btn-primary btn-full" id="submitBtn" onclick="registerFarmer()">
+          Register Farmer & Generate Voucher
+        </button>
+      </div>
+    </div>
+
+    <!-- VOUCHER RESULT -->
+    <div id="voucherResult" class="hidden mt-8">
+      <div class="voucher-result">
+        <h3>✅ Registration Successful!</h3>
+        <p>Farmer registered and voucher generated. Send this to the farmer via SMS.</p>
+        <div id="farmerName" class="section-title" style="margin:12px 0;font-size:1.4rem;"></div>
+        <div>Voucher Code:</div>
+        <div id="voucherCode" class="voucher-code"></div>
+        <img id="qrImage" src="" alt="QR Code" />
+        <div id="voucherDetails" style="font-size:0.88rem;color:#555;line-height:1.8;margin-top:8px;"></div>
+        <div class="mt-4" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="printVoucher()">🖨️ Print Voucher</button>
+          <button class="btn btn-outline" style="border-color:var(--green);color:var(--green);" onclick="resetForm()">+ Register Another</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>G2F Direct Fertilizer Distribution System | Gwaram LGA, Jigawa State</footer>
+
+<script>
+async function registerFarmer() {
+  const btn = document.getElementById('submitBtn');
+  const err = document.getElementById('errorBox');
+  const ok  = document.getElementById('successBox');
+  err.classList.add('hidden');
+  ok.classList.add('hidden');
+
+  const user = JSON.parse(localStorage.getItem('user'));
+  const data = {
+    nin:          document.getElementById('nin').value.trim(),
+    full_name:    document.getElementById('full_name').value.trim(),
+    phone_number: document.getElementById('phone_number').value.trim(),
+    ward:         document.getElementById('ward').value,
+    village:      document.getElementById('village').value.trim(),
+    crop_type:    document.getElementById('crop_type').value,
+    acreage_ha:   document.getElementById('acreage_ha').value,
+    is_pending:   document.getElementById('pendingCheckbox').checked,
+    actor_name:   user ? user.full_name : 'Unknown',
+    actor_role:   user ? user.role : 'officer'
+  };
+
+  if (!data.nin || !data.full_name || !data.phone_number || !data.acreage_ha) {
+    err.textContent = '❌ Please fill in all required fields (NIN, Full Name, Phone, Farm Size).';
+    err.classList.remove('hidden');
+    return;
+  }
+
+  btn.innerHTML = '<span class="spinner"></span> Verifying NIN & Registering...';
+  btn.disabled = true;
+
+  try {
+    const res  = await authFetch('/api/farmers/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+
+    if (!res.ok) {
+      err.textContent = '❌ ' + json.error;
+      err.classList.remove('hidden');
+    } else if (json.pending) {
+      // ── PENDING: no voucher issued ──
+      document.getElementById('formCard').classList.add('hidden');
+      document.getElementById('voucherResult').classList.remove('hidden');
+      document.getElementById('voucherResult').innerHTML = `
+        <div class="voucher-result" style="border-color:var(--accent);">
+          <div style="font-size:3rem; margin-bottom:12px;">⏳</div>
+          <h3 style="color:var(--accent);">Saved as Pending Verification</h3>
+          <p>Farmer <b>${json.farmer.full_name}</b> has been registered but marked as <b>pending NIN verification</b>.</p>
+          <div class="alert alert-warning" style="text-align:left; margin:16px 0;">
+            ⚠️ <b>No voucher has been issued.</b><br>
+            A supervisor must review and approve this registration from the Dashboard before a voucher code and QR will be generated.
+          </div>
+          <button class="btn btn-outline" style="border-color:var(--green);color:var(--green);" onclick="resetForm()">+ Register Another Farmer</button>
+        </div>
+      `;
+    } else {
+      // ── VERIFIED: show voucher + QR code ──
+      document.getElementById('formCard').classList.add('hidden');
+      const v = json.voucher;
+      const f = json.farmer;
+      document.getElementById('farmerName').textContent  = f.full_name;
+      document.getElementById('voucherCode').textContent = v.voucher_code;
+      document.getElementById('qrImage').src             = json.qrCode;
+      document.getElementById('voucherDetails').innerHTML =
+        '🌾 Crop: <b>' + (f.crop_type||'—') + '</b> &nbsp;|&nbsp; ' +
+        '📐 Farm Size: <b>' + f.acreage_ha + ' ha</b> &nbsp;|&nbsp; ' +
+        '🎒 Bags Allocated: <b>' + v.bags_allocated + ' bags</b><br>' +
+        '📍 Distribution Point: <b>' + v.distribution_point + '</b><br>' +
+        '📅 Collection Window: <b>' +
+          new Date(v.collection_start).toDateString() + ' → ' +
+          new Date(v.collection_end).toDateString() + '</b>';
+      document.getElementById('voucherResult').classList.remove('hidden');
+    }
+  } catch (e) {
+    err.textContent = '❌ Network error. Make sure the server is running.';
+    err.classList.remove('hidden');
+  }
+
+  btn.innerHTML = 'Register Farmer & Generate Voucher';
+  btn.disabled  = false;
+}
+
+function resetForm() {
+  document.getElementById('formCard').classList.remove('hidden');
+  document.getElementById('voucherResult').classList.add('hidden');
+  document.getElementById('nin').value = '';
+  document.getElementById('full_name').value = '';
+  document.getElementById('phone_number').value = '';
+  document.getElementById('acreage_ha').value = '';
+  document.getElementById('pendingCheckbox').checked = false;
+}
+
+function printVoucher() { window.print(); }
+</script>
+
+</body>
+</html>

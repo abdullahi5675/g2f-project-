@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supervisor Dashboard — G2F</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/auth.js"></script>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><div class="nav-logo">🌾</div> G2F <span>Direct</span></div>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/register">Register</a>
+    <a href="/dashboard" class="active">Dashboard</a>
+    <a href="/agent">Agent</a>
+  </div>
+</nav>
+
+<!-- Page Header -->
+<div class="page-header" style="margin-bottom:0; padding:28px 5%;">
+  <div style="display:flex; align-items:center; justify-content:space-between; max-width:1400px; margin:0 auto;">
+    <div>
+      <h1 style="font-size:1.6rem; margin-bottom:4px;">📊 Supervisor Dashboard</h1>
+      <p style="color:var(--text-muted); font-size:0.95rem;">Gwaram LGA — 2024 Fertilizer Distribution Season</p>
+    </div>
+    <button class="btn btn-gold btn-sm" onclick="refreshDashboard(this)">↻ Refresh</button>
+  </div>
+</div>
+
+<!-- Dashboard Layout: Sidebar + Content -->
+<div class="dashboard-layout" style="padding-top:32px;">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-link active" onclick="showTab('overview', this)">
+      <span>📊</span> Overview
+    </div>
+    <div class="sidebar-link" onclick="showTab('farmers', this)">
+      <span>👥</span> Registered Farmers
+    </div>
+    <div class="sidebar-link" onclick="showTab('pending', this)">
+      <span>⏳</span> Pending Verification
+      <span id="pendingBadge" style="margin-left:auto; background:var(--accent); color:white; border-radius:20px; padding:2px 8px; font-size:0.7rem;"></span>
+    </div>
+    <div class="sidebar-link" onclick="showTab('audit', this)">
+      <span>📋</span> Audit Log
+    </div>
+    <div class="sidebar-link" onclick="showTab('fraud', this)">
+      <span>🚨</span> Fraud Alerts
+    </div>
+    <div class="sidebar-link" onclick="exportCSV()" style="margin-top:8px; border-color:var(--primary); color:var(--primary);">
+      <span>📥</span> Export CSV
+    </div>
+  </div>
+
+  <!-- CONTENT AREA -->
+  <div class="dashboard-content">
+
+    <!-- TAB: OVERVIEW -->
+    <div id="tab-overview" class="tab-pane active">
+      <!-- STAT CARDS -->
+      <div class="stats-grid" style="margin-top:0;">
+        <div class="stat-card green">
+          <div class="label">Registered Farmers</div>
+          <div class="value" id="statFarmers">—</div>
+          <div class="sub">Verified via NIN</div>
+        </div>
+        <div class="stat-card blue">
+          <div class="label">Bags Allocated</div>
+          <div class="value" id="statBagsAlloc">—</div>
+          <div class="sub">Total this season</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="label">Bags Distributed</div>
+          <div class="value" id="statBagsDist">—</div>
+          <div class="sub" id="statPct">—% collected</div>
+        </div>
+        <div class="stat-card red">
+          <div class="label">Pending Collection</div>
+          <div class="value" id="statPending">—</div>
+          <div class="sub">Vouchers not yet redeemed</div>
+        </div>
+      </div>
+
+      <!-- PROGRESS BAR -->
+      <div class="card mb-8" style="margin-top:4px;">
+        <div class="flex-between mb-4" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div class="card-title" style="margin-bottom:0; border:none; padding:0;"><div class="icon">📦</div> Distribution Progress</div>
+          <span id="pctLabel" class="badge badge-green">0%</span>
+        </div>
+        <div class="progress-bar-wrap" style="background:#e9ecef; border-radius:6px; height:12px; overflow:hidden;">
+          <div class="progress-bar" id="progressBar" style="width:0%; height:100%; background:var(--primary); border-radius:6px; transition:width 0.8s ease;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:0.8rem;color:var(--text-muted);">
+          <span>0 bags</span>
+          <span id="progressLabel">Loading...</span>
+        </div>
+      </div>
+
+      <!-- WARD BREAKDOWN -->
+      <div class="card">
+        <div class="card-title"><div class="icon">🗺️</div> Distribution by Ward</div>
+        <div id="wardTable" style="font-size:0.88rem;">
+          <p class="text-gray">Loading ward data...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: REGISTERED FARMERS -->
+    <div id="tab-farmers" class="tab-pane">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:16px;">
+          <div class="card-title" style="margin-bottom:0; border:none; padding:0;"><div class="icon">👥</div> Registered Farmers</div>
+          <span id="farmerCount" class="badge badge-green">0 farmers</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Full Name</th><th>NIN</th><th>Ward</th>
+                <th>Crop</th><th>Farm (ha)</th><th>Voucher</th>
+                <th>Bags</th><th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="farmersTable">
+              <tr><td colspan="9" class="text-center text-gray" style="padding:32px">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: PENDING VERIFICATION -->
+    <div id="tab-pending" class="tab-pane">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:16px;">
+          <div class="card-title" style="margin-bottom:0; border:none; padding:0;"><div class="icon">⏳</div> Pending Verification</div>
+          <span id="pendingCount" class="badge badge-gold">0 pending</span>
+        </div>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">These are farmers whose NIN could not be verified at registration time. Review and accept or reject each one.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Full Name</th><th>NIN</th><th>Ward</th><th>Village</th><th>Crop</th><th>Action</th></tr>
+            </thead>
+            <tbody id="pendingTable">
+              <tr><td colspan="6" class="text-center text-gray" style="padding:32px">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: AUDIT LOG -->
+    <div id="tab-audit" class="tab-pane">
+      <div class="card">
+        <div class="card-title"><div class="icon">📋</div> System Audit Log</div>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">A full record of every login, registration, and distribution event in the system.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Date & Time</th><th>Action</th><th>Who Did It</th><th>Role</th><th>Details</th></tr>
+            </thead>
+            <tbody id="auditTable">
+              <tr><td colspan="5" class="text-center text-gray" style="padding:32px">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: FRAUD ALERTS -->
+    <div id="tab-fraud" class="tab-pane">
+      <div class="card">
+        <div class="card-title"><div class="icon" style="background:#fdecea;">🚨</div> Fraud Alerts</div>
+        <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:20px;">These are flagged cases where an agent attempted to redeem a voucher that was already fully collected.</p>
+        <div id="fraudAlerts">
+          <p class="text-gray text-center" style="padding:40px;">Loading alerts...</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end dashboard-content -->
+</div><!-- end dashboard-layout -->
+
+<footer>G2F Direct Fertilizer Distribution System | Gwaram LGA, Jigawa State</footer>
+
+<script>
+function showTab(tab, el) {
+  // Hide all panes
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  // Remove active from all sidebar links
+  document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+  // Show chosen pane and mark link active
+  document.getElementById('tab-' + tab).classList.add('active');
+  el.classList.add('active');
+}
+
+async function refreshDashboard(btn) {
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '↻ Refreshing...';
+  btn.disabled = true;
+  await Promise.all([loadStats(), loadFarmers()]);
+  btn.innerHTML = originalText;
+  btn.disabled = false;
+}
+
+async function loadStats() {
+  try {
+    const res  = await authFetch('/api/dashboard/stats');
+    const data = await res.json();
+
+    document.getElementById('statFarmers').textContent   = data.total_farmers;
+    document.getElementById('statBagsAlloc').textContent = data.bags_allocated;
+    document.getElementById('statBagsDist').textContent  = data.bags_distributed;
+    document.getElementById('statPending').textContent   = data.pending;
+
+    const pct = data.bags_allocated > 0
+      ? Math.round((data.bags_distributed / data.bags_allocated) * 100)
+      : 0;
+    document.getElementById('statPct').textContent     = pct + '% collected';
+    document.getElementById('pctLabel').textContent    = pct + '%';
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('progressLabel').textContent =
+      data.bags_distributed + ' of ' + data.bags_allocated + ' bags distributed';
+
+    // Ward table
+    const wt = document.getElementById('wardTable');
+    if (data.by_ward && data.by_ward.length > 0) {
+      wt.innerHTML = '<table style="width:100%;border-collapse:collapse;">' +
+        '<thead><tr style="background:var(--secondary); color:white;"><th style="padding:10px 16px;text-align:left">Ward</th><th style="padding:10px 16px;text-align:center">Farmers</th><th style="padding:10px 16px;text-align:center">Bags</th></tr></thead><tbody>' +
+        data.by_ward.map(w =>
+          '<tr style="border-bottom:1px solid var(--border)"><td style="padding:12px 16px">' + (w.ward||'Unknown') + '</td>' +
+          '<td style="padding:12px 16px;text-align:center">' + w.farmers + '</td>' +
+          '<td style="padding:12px 16px;text-align:center">' + (w.bags||0) + '</td></tr>'
+        ).join('') + '</tbody></table>';
+    } else {
+      wt.innerHTML = '<p class="text-gray" style="padding:20px; font-size:0.88rem">No data yet. Register farmers to see ward breakdown.</p>';
+    }
+
+    // Fraud Alerts
+    const faDiv = document.getElementById('fraudAlerts');
+    if (data.fraud_alerts && data.fraud_alerts.length > 0) {
+      faDiv.innerHTML = data.fraud_alerts.map(fa => `
+        <div style="display:flex; gap:16px; align-items:flex-start; padding:16px; background:var(--danger-light); border-radius:var(--radius); border:1px solid #f5c2c7; margin-bottom:12px;">
+          <span style="font-size:1.5rem;">⚠️</span>
+          <div>
+            <h4 style="color:var(--danger); font-size:1rem; margin-bottom:4px;">${fa.alert_type}</h4>
+            <p style="font-size:0.85rem; color:var(--text-muted);">${fa.description} — ${new Date(fa.detected_at).toLocaleString()}</p>
+          </div>
+        </div>
+      `).join('');
+    } else {
+      faDiv.innerHTML = '<div style="text-align:center; padding:40px; color:var(--primary);"><div style="font-size:3rem; margin-bottom:12px;">✅</div><p style="font-weight:600;">No fraud alerts detected</p><p style="color:var(--text-muted); font-size:0.9rem;">All redemptions are clean.</p></div>';
+    }
+
+    // Audit Log
+    const auditTbody = document.getElementById('auditTable');
+    if (data.audit_log && data.audit_log.length > 0) {
+      auditTbody.innerHTML = data.audit_log.map(a => `
+        <tr>
+          <td style="font-size:0.85rem">${new Date(a.timestamp).toLocaleString()}</td>
+          <td><b>${a.action_type}</b></td>
+          <td>${a.actor_name}</td>
+          <td><span class="badge badge-gray">${a.actor_role}</span></td>
+          <td style="font-size:0.85rem">${a.description}</td>
+        </tr>
+      `).join('');
+    } else {
+      auditTbody.innerHTML = '<tr><td colspan="5" class="text-center text-gray" style="padding:32px">No records found.</td></tr>';
+    }
+
+  } catch (e) {
+    console.error('Error loading stats:', e);
+  }
+}
+
+async function loadFarmers() {
+  try {
+    const [fRes, vRes] = await Promise.all([
+      authFetch('/api/farmers'),
+      authFetch('/api/vouchers')
+    ]);
+    const farmers  = await fRes.json();
+    const vouchers = await vRes.json();
+
+    document.getElementById('farmerCount').textContent = farmers.length + ' farmers';
+
+    window.allFarmers = farmers;
+    const vMap = {};
+    vouchers.forEach(v => { vMap[v.farmer_id] = v; });
+    window.allVouchersMap = vMap;
+
+    // Pending Queue
+    const pendingFarmers = farmers.filter(f => f.verification_status === 'pending');
+    const pCount = pendingFarmers.length;
+    document.getElementById('pendingCount').textContent = pCount + ' pending';
+    document.getElementById('pendingBadge').textContent = pCount > 0 ? pCount : '';
+
+    const pendingTbody = document.getElementById('pendingTable');
+    if (pendingFarmers.length === 0) {
+      pendingTbody.innerHTML = '<tr><td colspan="6" class="text-center text-gray" style="padding:32px">No pending farmers. All registrations are resolved.</td></tr>';
+    } else {
+      pendingTbody.innerHTML = pendingFarmers.map(f =>
+        `<tr>
+          <td><b>${f.full_name}</b></td>
+          <td style="font-family:monospace">${f.nin}</td>
+          <td>${f.ward||'—'}</td>
+          <td>${f.village||'—'}</td>
+          <td>${f.crop_type||'—'}</td>
+          <td style="display:flex; gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="updateFarmerStatus(${f.id}, 'verified')">✅ Accept</button>
+            <button class="btn btn-sm" style="background:var(--danger-light); color:var(--danger); border:1px solid var(--danger);" onclick="updateFarmerStatus(${f.id}, 'rejected')">❌ Reject</button>
+          </td>
+        </tr>`
+      ).join('');
+    }
+
+    // Farmers Table
+    const tbody = document.getElementById('farmersTable');
+    if (farmers.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-gray" style="padding:32px">No farmers registered yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = farmers.map((f, i) => {
+      const v = vMap[f.id];
+      const statusBadge = !v ? '<span class="badge badge-gray">No voucher</span>'
+        : v.status === 'redeemed' ? '<span class="badge badge-green">✅ Collected</span>'
+        : v.status === 'partial'  ? '<span class="badge badge-gold">⏳ Partial</span>'
+        : '<span class="badge badge-red">⏳ Pending</span>';
+      return '<tr>' +
+        '<td>' + (i+1) + '</td>' +
+        '<td><b>' + f.full_name + '</b><br><span style="font-size:0.75rem;color:var(--text-muted)">' + (f.village||'') + '</span></td>' +
+        '<td style="font-family:monospace">' + f.nin.slice(0,4) + '****' + f.nin.slice(-3) + '</td>' +
+        '<td>' + (f.ward||'—') + '</td>' +
+        '<td>' + (f.crop_type||'—') + '</td>' +
+        '<td>' + (f.acreage_ha||'—') + '</td>' +
+        '<td style="font-family:monospace;font-size:0.78rem">' + (v ? v.voucher_code : '—') + '</td>' +
+        '<td>' + (v ? v.bags_allocated + ' bags' : '—') + '</td>' +
+        '<td>' + statusBadge + '</td>' +
+        '</tr>';
+    }).join('');
+  } catch (e) {
+    document.getElementById('farmersTable').innerHTML =
+      '<tr><td colspan="9" class="text-center" style="padding:32px; color:var(--danger)">Error loading data. Is the server running?</td></tr>';
+  }
+}
+
+async function updateFarmerStatus(id, status) {
+  const user = JSON.parse(localStorage.getItem('user'));
+  const farmer = window.allFarmers ? window.allFarmers.find(f => f.id === id) : null;
+  const name = farmer ? farmer.full_name : 'Farmer';
+  const crop = farmer ? farmer.crop_type : '—';
+  const acreage = farmer ? farmer.acreage_ha : '—';
+  
+  try {
+    const res = await authFetch('/api/farmers/' + id + '/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, actor_name: user ? user.full_name : 'Supervisor', actor_role: user ? user.role : 'supervisor' })
+    });
+    const data = await res.json();
+    if (data.voucher) {
+      const v = data.voucher;
+      const details = `
+        🌾 Crop: <b>${crop}</b> &nbsp;|&nbsp; 📐 Farm Size: <b>${acreage} ha</b><br>
+        🎒 Bags Allocated: <b>${v.bags_allocated} bags</b><br>
+        📍 Distribution Point: <b>${v.distribution_point}</b><br>
+        📅 Collection Window: <b>${new Date(v.collection_start).toDateString()} → ${new Date(v.collection_end).toDateString()}</b>
+      `;
+      showPreviewModal(
+        '✅ Farmer Approved & Verified',
+        'A voucher has been generated successfully and sent via SMS.',
+        name,
+        v.voucher_code,
+        data.qrCode,
+        details,
+        true
+      );
+    } else if (status === 'rejected') {
+      showPreviewModal(
+        '❌ Registration Rejected',
+        `Farmer ${name}'s registration has been rejected. No voucher was issued.`,
+        '', '', '', '',
+        false
+      );
+    }
+  } catch (e) {
+    console.error('Error updating farmer status:', e);
+    alert('Failed to update status.');
+  }
+  loadFarmers();
+  loadStats();
+}
+
+function exportCSV() {
+  if (!window.allFarmers || window.allFarmers.length === 0) return alert('No data to export. Load the dashboard first.');
+  let csv = 'Full Name,NIN (masked),Ward,Village,Crop Type,Farm Size (ha),Voucher Code,Bags Allocated,Status\n';
+  window.allFarmers.forEach(f => {
+    const v = window.allVouchersMap[f.id];
+    const maskedNIN = f.nin.slice(0,4) + '****' + f.nin.slice(-3);
+    const vc = v ? v.voucher_code : '';
+    const ba = v ? v.bags_allocated : '';
+    const st = v ? v.status : '';
+    csv += `"${f.full_name}","${maskedNIN}","${f.ward||''}","${f.village||''}","${f.crop_type||''}","${f.acreage_ha||''}","${vc}","${ba}","${st}"\n`;
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", "g2f-farmers-report.csv");
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function showPreviewModal(title, sub, farmerName, voucherCode, qrImage, details, isSuccess = true) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalTitle').style.color = isSuccess ? 'var(--primary)' : 'var(--danger)';
+  document.getElementById('modalSub').textContent = sub;
+  
+  const body = document.getElementById('modalVoucherBody');
+  if (isSuccess) {
+    body.style.display = 'block';
+    document.getElementById('modalFarmerName').textContent = farmerName;
+    document.getElementById('modalVoucherCode').textContent = voucherCode;
+    document.getElementById('modalQrImage').src = qrImage || '';
+    document.getElementById('modalVoucherDetails').innerHTML = details || '';
+  } else {
+    body.style.display = 'none';
+  }
+  
+  document.getElementById('previewModal').classList.remove('hidden');
+}
+
+function closePreviewModal() {
+  document.getElementById('previewModal').classList.add('hidden');
+}
+
+loadStats();
+loadFarmers();
+</script>
+
+<!-- Custom System Preview Modal -->
+<div id="previewModal" class="hidden" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; animation: fadeIn 0.2s ease-in-out;">
+  <div class="card" style="background: white; max-width: 500px; width: 90%; padding: 24px; box-shadow: var(--shadow-md); border-radius: var(--radius); text-align: center;">
+    <h3 id="modalTitle" style="color: var(--primary); margin-bottom: 8px;">✅ Registration Approved</h3>
+    <p id="modalSub" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">Voucher has been successfully generated for the farmer.</p>
+    
+    <div id="modalVoucherBody" class="voucher-result" style="padding: 16px; background: var(--bg-page); border: 1px solid var(--border-dark); border-radius: var(--radius);">
+      <div id="modalFarmerName" style="font-weight: 700; font-size: 1.1rem; margin-bottom: 8px; color: var(--secondary);">Ukasha Zakariyya</div>
+      <div>Voucher Code:</div>
+      <div id="modalVoucherCode" class="voucher-code" style="font-size: 1.4rem; padding: 10px 16px; margin: 8px 0;">GF-20241012-0034</div>
+      <img id="modalQrImage" src="" alt="QR Code" style="max-width: 150px; margin: 12px auto; display: block; border: 1px solid var(--border); padding: 6px; background: white; border-radius: var(--radius);" />
+      <div id="modalVoucherDetails" style="font-size: 0.82rem; color: #555; line-height: 1.5; text-align: left; margin-top: 8px;"></div>
+    </div>
+    
+    <div class="mt-4">
+      <button class="btn btn-primary btn-full" onclick="closePreviewModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

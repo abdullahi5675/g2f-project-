@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign Up — G2F</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/auth.js"></script>
+</head>
+<body>
+  <div class="page" style="display:flex; align-items:center; justify-content:center; min-height:80vh;">
+    <div class="card" style="width:100%; max-width:400px; padding:40px;">
+      <h2 style="text-align:center; margin-bottom:20px;">Register Account</h2>
+      <div id="errorMsg" class="alert alert-error hidden"></div>
+      <div id="successMsg" class="alert alert-success hidden"></div>
+      <div class="form-group mb-4">
+        <label>Full Name</label>
+        <input type="text" id="fullname" placeholder="John Doe">
+      </div>
+      <div class="form-group mb-4">
+        <label>Role</label>
+        <select id="role">
+          <option value="officer">Enrolment Officer</option>
+          <option value="agent">Distribution Agent</option>
+          <option value="supervisor">Supervisor</option>
+        </select>
+      </div>
+      <div class="form-group mb-4">
+        <label>Username</label>
+        <input type="text" id="username" placeholder="Choose a username">
+      </div>
+      <div class="form-group mb-8" style="position:relative;">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Choose a password" style="padding-right:40px;">
+        <span style="position:absolute; right:12px; top:38px; cursor:pointer;" onclick="togglePassword('password', this)">👁️</span>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="signup()">Register</button>
+      <p style="text-align:center; margin-top:16px;">Already have an account? <a href="login.html">Login</a></p>
+    </div>
+  </div>
+  <script>
+    function togglePassword(id, el) {
+      const input = document.getElementById(id);
+      if (input.type === 'password') {
+        input.type = 'text';
+        el.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        el.textContent = '👁️';
+      }
+    }
+
+    async function signup() {
+      const full_name = document.getElementById('fullname').value;
+      const role = document.getElementById('role').value;
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      
+      if(!full_name || !username || !password) return alert('Fill all fields');
+      
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({full_name, role, username, password})
+        });
+        const data = await res.json();
+        if(res.ok) {
+          document.getElementById('successMsg').innerText = 'Registration successful! Redirecting to login...';
+          document.getElementById('successMsg').classList.remove('hidden');
+          document.getElementById('errorMsg').classList.add('hidden');
+          setTimeout(() => window.location.href = '/login.html', 2000);
+        } else {
+          document.getElementById('errorMsg').innerText = data.error;
+          document.getElementById('errorMsg').classList.remove('hidden');
+        }
+      } catch (err) {
+        alert('Error signing up');
+      }
+    }
+  </script>
+</body>
+</html>

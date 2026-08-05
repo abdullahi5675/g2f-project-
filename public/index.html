@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>G2F — Fertilizer Distribution System</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/auth.js"></script>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">🌾</div>
+    G2F <span>Direct</span>
+  </div>
+  <div class="nav-links">
+    <a href="/" class="active">Home</a>
+    <a href="/register">Register</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/agent">Agent</a>
+    <a href="/sms-preview">SMS Preview</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">🇳🇬 Gwaram LGA · Jigawa State</div>
+    <h1>Government-to-Farmers<br><span>Fertilizer Distribution</span><br>Made Transparent</h1>
+    <p>A digital platform that eliminates ghost beneficiaries, reduces fraud, and ensures subsidised fertilizer reaches verified smallholder farmers — on time, every time.</p>
+    <div class="hero-btns">
+      <a href="/register" class="btn btn-gold">Register a Farmer</a>
+      <a href="/dashboard" class="btn btn-outline">View Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEM SECTION -->
+<div class="page">
+  <div class="text-center mb-8">
+    <div class="section-title">The Problem We Are Solving</div>
+    <p class="section-sub">The current paper-based system in Gwaram LGA has four major failures</p>
+  </div>
+
+  <div class="problems-grid">
+    <div class="problem-card">
+      <div class="p-icon">👻</div>
+      <h4>Ghost Beneficiaries</h4>
+      <p>28–44% of fertilizer allocations could not be traced to verified active farmers. Fake names on the list collect bags meant for real farmers.</p>
+    </div>
+    <div class="problem-card">
+      <div class="p-icon">📋</div>
+      <h4>No Audit Trail</h4>
+      <p>Paper records can't be queried in real-time. Officials have no way to know who collected what, when, and where during distribution.</p>
+    </div>
+    <div class="problem-card">
+      <div class="p-icon">⏰</div>
+      <h4>Chronic Delays</h4>
+      <p>Distribution starts 4–6 weeks after registration, consistently missing the optimal planting window — reducing crop yields by 12–17%.</p>
+    </div>
+    <div class="problem-card">
+      <div class="p-icon">📵</div>
+      <h4>Farmers Not Notified</h4>
+      <p>Farmers travel to multiple distribution points without knowing if their allocation is ready, wasting precious time during planting season.</p>
+    </div>
+  </div>
+
+  <!-- SOLUTION SECTION -->
+  <div class="text-center mb-8 mt-8">
+    <div class="section-title">How the G2F System Fixes This</div>
+    <p class="section-sub">Five digital modules working together to guarantee transparency</p>
+  </div>
+
+  <div class="solutions-grid">
+    <div class="solution-card">
+      <div class="s-icon">🪪</div>
+      <h4>NIN-Based Registration</h4>
+      <p>Every farmer is registered with their National Identification Number, preventing duplicates and ghost beneficiaries from the start.</p>
+    </div>
+    <div class="solution-card">
+      <div class="s-icon">📱</div>
+      <h4>Digital QR Vouchers</h4>
+      <p>Each farmer gets a unique QR-coded voucher tied to their identity. It can only be redeemed once, by the right person, at the right point.</p>
+    </div>
+    <div class="solution-card">
+      <div class="s-icon">📡</div>
+      <h4>USSD Agent Interface</h4>
+      <p>Distribution agents confirm collections using any basic phone — no internet needed. Works even in areas with no data connection.</p>
+    </div>
+    <div class="solution-card">
+      <div class="s-icon">📊</div>
+      <h4>Real-Time Dashboard</h4>
+      <p>Government officials see live data — who collected, who hasn't, fraud alerts, and full audit logs exportable as reports.</p>
+    </div>
+    <div class="solution-card">
+      <div class="s-icon">💬</div>
+      <h4>SMS Notifications</h4>
+      <p>Farmers receive SMS alerts when their voucher is ready, when collection opens, and confirmation after they collect — in English and Hausa.</p>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div class="card mt-8">
+    <div class="card-title"><div class="icon">🔄</div> How the System Works — Step by Step</div>
+    <div style="display:grid; gap:16px;">
+      <div class="alert alert-info">
+        <strong>Step 1 →</strong>&nbsp; LGA Enrolment Officer registers farmer using NIN. System verifies identity and saves farm details.
+      </div>
+      <div class="alert alert-info">
+        <strong>Step 2 →</strong>&nbsp; System automatically computes bags allocated based on farm size. A unique QR voucher is generated and sent to the farmer by SMS.
+      </div>
+      <div class="alert alert-info">
+        <strong>Step 3 →</strong>&nbsp; Farmer receives SMS with voucher code. They go to their assigned distribution point within the collection window.
+      </div>
+      <div class="alert alert-info">
+        <strong>Step 4 →</strong>&nbsp; Distribution Agent dials USSD code, enters farmer's voucher, confirms identity, and records collection. System updates in real time.
+      </div>
+      <div class="alert alert-success">
+        <strong>Step 5 →</strong>&nbsp; Farmer receives SMS confirmation. Supervisor sees completed transaction on dashboard. Full audit trail is saved automatically.
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  G2F Direct Fertilizer Distribution System &nbsp;|&nbsp; Gwaram LGA, Jigawa State, Nigeria &nbsp;|&nbsp; Final Year Project — Software Engineering
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMS Preview — G2F</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/auth.js"></script>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><div class="nav-logo">🌾</div> G2F <span>Direct</span></div>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/register">Register</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/agent">Agent</a>
+    <a href="/sms-preview" class="active">SMS Preview</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page" style="padding-top:0;padding-bottom:0">
+    <h1>💬 Farmer SMS Notifications</h1>
+    <p>Preview of the automated SMS messages sent to registered farmers at each stage</p>
+  </div>
+</div>
+
+<div class="page">
+  <div class="alert alert-info mb-8">
+    📱 Farmers receive these messages on their registered phone numbers. Messages are sent in both <b>English</b> and <b>Hausa</b> to ensure accessibility for all farmers in Gwaram LGA.
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:32px;align-items:start;">
+
+    <!-- SMS 1 -->
+    <div>
+      <div class="section-title" style="font-size:1rem;margin-bottom:8px;">📌 Stage 1 — Voucher Issued</div>
+      <p class="text-gray mb-4" style="font-size:0.85rem;">Sent immediately after farmer is registered</p>
+      <div class="phone-mock">
+        <div class="phone-screen">
+          <div class="sms-bubble">
+            <div class="sms-from">G2F-JIGAWA</div>
+            Dear Ukasha Zakariyya, you have been successfully registered in the G2F Fertilizer Distribution Programme.
+            <br><br>
+            Voucher: <b>GF-20241012-0034</b><br>
+            Bags Allocated: <b>3 bags NPK</b><br>
+            Distribution Point: <b>Gwaram Central</b><br>
+            Collection Window: <b>19 Oct – 2 Nov 2024</b>
+            <div class="sms-time">12 Oct · 09:14</div>
+          </div>
+          <div class="sms-bubble">
+            <div class="sms-from">G2F-JIGAWA</div>
+            Ukasha Zakariyya, an rijista ka a shirin G2F na taki.
+            <br><br>
+            Lambar voucher: <b>GF-20241012-0034</b><br>
+            Jakunkuna: <b>3 na NPK</b><br>
+            Wurin karba: <b>Gwaram Central</b>
+            <div class="sms-time">12 Oct · 09:14</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SMS 2 -->
+    <div>
+      <div class="section-title" style="font-size:1rem;margin-bottom:8px;">🔔 Stage 2 — Collection Reminder</div>
+      <p class="text-gray mb-4" style="font-size:0.85rem;">Sent 3 days before collection window opens</p>
+      <div class="phone-mock">
+        <div class="phone-screen">
+          <div class="sms-bubble">
+            <div class="sms-from">G2F-JIGAWA</div>
+            REMINDER: Ukasha Zakariyya, your fertilizer collection window opens in 3 days (19 Oct 2024).
+            <br><br>
+            📍 Go to: <b>Gwaram Central Distribution Point</b><br>
+            🕗 Time: <b>8:00AM – 5:00PM</b><br>
+            🎫 Bring your voucher code: <b>GF-20241012-0034</b>
+            <div class="sms-time">16 Oct · 08:00</div>
+          </div>
+          <div class="sms-bubble">
+            <div class="sms-from">G2F-JIGAWA</div>
+            TUNA-MANTA: Ukasha, za a buɗe taga karɓar taki a cikin kwana 3 (19 Oct 2024).
+            <br><br>
+            📍 Je zuwa: <b>Gwaram Central</b><br>
+            🎫 Lambar: <b>GF-20241012-0034</b>
+            <div class="sms-time">16 Oct · 08:00</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SMS 3 -->
+    <div>
+      <div class="section-title" style="font-size:1rem;margin-bottom:8px;">✅ Stage 3 — Collection Confirmed</div>
+      <p class="text-gray mb-4" style="font-size:0.85rem;">Sent after agent records successful collection</p>
+      <div class="phone-mock">
+        <div class="phone-screen">
+          <div class="sms-bubble">
+            <div class="sms-from">G2F-JIGAWA</div>
+            ✅ CONFIRMED: Ukasha Zakariyya, your collection has been recorded.
+            <br><br>
+            Bags Collected: <b>3 bags NPK</b><br>
+            Location: <b>Gwaram Central</b><br>
+            Date: <b>22 Oct 2024, 10:47AM</b><br>
+            Reference: <b>GF-20241012-0034</b>
+            <br><br>
+            Thank you. Good luck this planting season!
+            <div class="sms-time">22 Oct · 10:47</div>
+          </div>
+          <div class="sms-bubble">
+            <div class="sms-from">G2F-JIGAWA</div>
+            ✅ AN TABBATAR: Ukasha, an rubuta karɓar takinka.
+            <br><br>
+            Jakunkuna: <b>3 na NPK</b><br>
+            Ref: <b>GF-20241012-0034</b>
+            <br><br>
+            Na gode. Allah ya ba da albarka a noman wannan shekara!
+            <div class="sms-time">22 Oct · 10:47</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- FRAUD ALERT SMS -->
+  <div class="card mt-8">
+    <div class="card-title"><div class="icon" style="background:var(--red-lite)">🚨</div> Fraud Detection Alert (to Supervisor)</div>
+    <div class="alert alert-error">
+      <b>FRAUD ALERT — G2F System:</b> Voucher GF-20241012-0034 (Ukasha Zakariyya) was scanned a second time at Kafin Hausa Distribution Point on 23 Oct 2024 at 14:32. Farmer already fully collected on 22 Oct. Agent: Ibrahim Musa. This transaction was BLOCKED automatically. Please investigate.
+    </div>
+    <p class="text-gray" style="font-size:0.88rem">This SMS is automatically sent to the supervising officer whenever a duplicate redemption attempt is detected by the system.</p>
+  </div>
+
+</div>
+
+<footer>G2F Direct Fertilizer Distribution System | Gwaram LGA, Jigawa State</footer>
+
+</body>
+</html>

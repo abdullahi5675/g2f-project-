@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Distribution Agent — G2F</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script src="js/auth.js"></script>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand"><div class="nav-logo">🌾</div> G2F <span>Direct</span></div>
+  <div class="nav-links">
+    <a href="/">Home</a>
+    <a href="/register">Register</a>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/agent" class="active">Agent</a>
+    <a href="/sms-preview">SMS Preview</a>
+  </div>
+</nav>
+
+<div class="page-header">
+  <div class="page" style="padding-top:0;padding-bottom:0">
+    <h1>📡 Distribution Agent Portal</h1>
+    <p>Verify farmer vouchers and record fertilizer collection at distribution points</p>
+  </div>
+</div>
+
+<div class="page">
+  <div style="max-width:680px;margin:0 auto;">
+
+    <div class="alert alert-info mb-4">
+      ℹ️ In the real system, agents use USSD (*XXX#) on any basic phone. This web interface simulates that process for demonstration.
+    </div>
+
+    <!-- STEP 1: VERIFY -->
+    <div class="card" id="step1">
+      <div class="card-title"><div class="icon">🔍</div> Step 1 — Verify Voucher</div>
+      <div class="form-group mb-4" style="display:none;">
+        <label for="agentName">Your Name (Agent)</label>
+        <input type="text" id="agentName" placeholder="e.g. Malam Ibrahim" />
+      </div>
+      <div class="form-group mb-4">
+        <label for="voucherInput">Enter Farmer's Voucher Code</label>
+        <div style="display:flex;gap:10px;">
+          <input type="text" id="voucherInput" placeholder="e.g. GF-12345678-1" style="font-family:monospace;font-size:1.1rem;letter-spacing:1px; flex:1;" />
+          <button class="btn btn-outline" style="border-color:var(--green);color:var(--green)" onclick="startScanner()">📸 Scan QR</button>
+        </div>
+      </div>
+      <div id="reader" style="width:100%; max-width:500px; margin: 0 auto 20px auto; display:none;"></div>
+      <button class="btn btn-primary btn-full" id="verifyBtn" onclick="verifyVoucher()">
+        🔍 Verify Voucher
+      </button>
+      <div id="verifyError" class="alert alert-error hidden mt-4"></div>
+    </div>
+
+    <!-- STEP 2: CONFIRM & REDEEM -->
+    <div class="card hidden mt-8" id="step2">
+      <div class="card-title"><div class="icon">✅</div> Step 2 — Confirm & Record Collection</div>
+      <div id="farmerInfo" class="card" style="background:var(--green-lite);border-color:var(--green);margin-bottom:20px;"></div>
+      <div class="form-group mb-4">
+        <label for="bagsInput">Number of Bags to Collect Now</label>
+        <input type="number" id="bagsInput" min="1" placeholder="Enter bags" />
+        <small id="bagsHint" class="text-gray"></small>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <button class="btn btn-primary" style="flex:1" id="redeemBtn" onclick="redeemVoucher()">✅ Confirm & Record</button>
+        <button class="btn btn-outline" style="border-color:var(--gray);color:var(--gray)" onclick="resetAgent()">← Back</button>
+      </div>
+      <div id="redeemError" class="alert alert-error hidden mt-4"></div>
+    </div>
+
+    <!-- STEP 3: SUCCESS -->
+    <div class="card hidden mt-8" id="step3" style="text-align:center;border:2px solid var(--green)">
+      <div style="font-size:3rem;margin-bottom:12px;">✅</div>
+      <h3 id="successMsg" style="color:var(--green);font-size:1.3rem;margin-bottom:8px;"></h3>
+      <div id="successDetails" style="font-size:0.9rem;color:var(--gray);line-height:1.8;margin-bottom:20px;"></div>
+      <div class="alert alert-info" style="text-align:left">
+        📱 An SMS confirmation has been sent to the farmer's registered phone number.
+      </div>
+      <button class="btn btn-primary mt-4" onclick="resetAgent()">Process Next Farmer</button>
+    </div>
+
+  </div>
+</div>
+
+<footer>G2F Direct Fertilizer Distribution System | Gwaram LGA, Jigawa State</footer>
+
+<script>
+let currentVoucher = null;
+
+async function verifyVoucher() {
+  const code = document.getElementById('voucherInput').value.trim();
+  const err  = document.getElementById('verifyError');
+  err.classList.add('hidden');
+
+  if (!code) {
+    err.textContent = '❌ Please enter a voucher code.';
+    err.classList.remove('hidden');
+    return;
+  }
+
+  const btn = document.getElementById('verifyBtn');
+  btn.innerHTML = '<span class="spinner"></span> Verifying...';
+  btn.disabled  = true;
+
+  try {
+    const res  = await authFetch('/api/vouchers/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ voucher_code: code })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      err.innerHTML = '❌ ' + data.error;
+      err.classList.remove('hidden');
+    } else {
+      currentVoucher = data.voucher;
+      const v = data.voucher;
+      const remaining = v.bags_allocated - v.bags_redeemed;
+      document.getElementById('farmerInfo').innerHTML =
+        '<b style="font-size:1.1rem;">' + v.full_name + '</b><br>' +
+        '<span style="font-size:0.85rem;color:var(--gray)">NIN: ' + v.nin.slice(0,4) + '****' + v.nin.slice(-3) + ' &nbsp;|&nbsp; Village: ' + (v.village||'—') + '</span><br><br>' +
+        '🎒 Bags Allocated: <b>' + v.bags_allocated + '</b> &nbsp;|&nbsp; Already Collected: <b>' + v.bags_redeemed + '</b> &nbsp;|&nbsp; Remaining: <b>' + remaining + '</b><br>' +
+        '📍 Assigned Point: <b>' + v.distribution_point + '</b>';
+      document.getElementById('bagsInput').max   = remaining;
+      document.getElementById('bagsInput').value = remaining;
+      document.getElementById('bagsHint').textContent = remaining + ' bag(s) remaining for this farmer.';
+      document.getElementById('step1').classList.add('hidden');
+      document.getElementById('step2').classList.remove('hidden');
+    }
+  } catch (e) {
+    err.textContent = '❌ Network error. Is the server running?';
+    err.classList.remove('hidden');
+  }
+
+  btn.innerHTML = '🔍 Verify Voucher';
+  btn.disabled  = false;
+}
+
+async function redeemVoucher() {
+  const bags  = document.getElementById('bagsInput').value;
+  const user  = JSON.parse(localStorage.getItem('user'));
+  const agent = user ? user.full_name : (document.getElementById('agentName').value.trim() || 'Agent');
+  const err   = document.getElementById('redeemError');
+  err.classList.add('hidden');
+
+  const btn = document.getElementById('redeemBtn');
+  btn.innerHTML = '<span class="spinner"></span> Recording...';
+  btn.disabled  = true;
+
+  try {
+    const res  = await authFetch('/api/vouchers/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        voucher_code:    document.getElementById('voucherInput').value.trim(),
+        agent_name:      agent,
+        bags_to_collect: parseInt(bags),
+        actor_name:      user ? user.full_name : agent,
+        actor_role:      user ? user.role : 'agent'
+      })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      err.textContent = '❌ ' + data.error;
+      err.classList.remove('hidden');
+    } else {
+      document.getElementById('step2').classList.add('hidden');
+      document.getElementById('successMsg').textContent = data.message;
+      document.getElementById('successDetails').innerHTML =
+        'Voucher: <b>' + data.voucher_code + '</b><br>' +
+        'Farmer: <b>' + data.farmer + '</b><br>' +
+        'Bags Collected: <b>' + data.bags_collected + '</b><br>' +
+        'Bags Remaining: <b>' + data.bags_remaining + '</b><br>' +
+        'Recorded by: <b>' + agent + '</b>';
+      document.getElementById('step3').classList.remove('hidden');
+    }
+  } catch (e) {
+    err.textContent = '❌ Network error.';
+    err.classList.remove('hidden');
+  }
+
+  btn.innerHTML = '✅ Confirm & Record';
+  btn.disabled  = false;
+}
+
+function resetAgent() {
+  currentVoucher = null;
+  document.getElementById('voucherInput').value = '';
+  document.getElementById('step1').classList.remove('hidden');
+  document.getElementById('step2').classList.add('hidden');
+  document.getElementById('step3').classList.add('hidden');
+  document.getElementById('verifyError').classList.add('hidden');
+}
+
+let html5Qrcode = null;
+let scannerRunning = false;
+
+function startScanner() {
+  const readerDiv = document.getElementById('reader');
+  const errDiv = document.getElementById('verifyError');
+  errDiv.classList.add('hidden');
+
+  // If scanner is already running, stop it
+  if (scannerRunning) {
+    stopScanner();
+    return;
+  }
+
+  // Check if camera API is available (requires HTTPS or localhost)
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    errDiv.innerHTML = '📸 <b>Camera not available.</b><br>' +
+      'Camera access requires a secure connection (HTTPS) or localhost.<br><br>' +
+      '💡 <b>Tip:</b> Type the voucher code manually in the field above instead.';
+    errDiv.classList.remove('hidden');
+    return;
+  }
+
+  readerDiv.style.display = 'block';
+  readerDiv.innerHTML = '<p style="text-align:center; padding:20px; color:var(--text-muted);">Starting camera...</p>';
+
+  if (!html5Qrcode) {
+    html5Qrcode = new Html5Qrcode("reader");
+  }
+
+  // Try back camera first (better for scanning), fallback to any available camera
+  html5Qrcode.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    onScanSuccess,
+    () => {} // Ignore per-frame scan failures (expected while looking for QR)
+  ).then(() => {
+    scannerRunning = true;
+    // Add a stop button below the scanner
+    const existingBtn = document.getElementById('stopScanBtn');
+    if (existingBtn) existingBtn.remove();
+    const stopBtn = document.createElement('button');
+    stopBtn.className = 'btn btn-outline btn-full';
+    stopBtn.style.cssText = 'border-color:var(--danger); color:var(--danger); margin-top:12px;';
+    stopBtn.textContent = '✕ Stop Scanner';
+    stopBtn.id = 'stopScanBtn';
+    stopBtn.onclick = stopScanner;
+    readerDiv.parentNode.insertBefore(stopBtn, readerDiv.nextSibling);
+  }).catch(err => {
+    console.error('Camera error:', err);
+    readerDiv.style.display = 'none';
+
+    let message = '📸 <b>Could not start camera.</b><br>';
+    const errStr = err.toString();
+    if (errStr.includes('NotReadableError')) {
+      message += 'The camera may be in use by another application. Close other apps using the camera and try again.';
+    } else if (errStr.includes('NotAllowedError')) {
+      message += 'Camera permission was denied. Please allow camera access in your browser settings and reload the page.';
+    } else if (errStr.includes('NotFoundError')) {
+      message += 'No camera was found on this device.';
+    } else {
+      message += 'Error: ' + errStr;
+    }
+    message += '<br><br>💡 <b>Tip:</b> You can type the voucher code manually in the field above.';
+
+    errDiv.innerHTML = message;
+    errDiv.classList.remove('hidden');
+  });
+}
+
+function stopScanner() {
+  if (html5Qrcode && scannerRunning) {
+    html5Qrcode.stop().then(() => {
+      scannerRunning = false;
+      document.getElementById('reader').style.display = 'none';
+      const stopBtn = document.getElementById('stopScanBtn');
+      if (stopBtn) stopBtn.remove();
+    }).catch(err => console.error('Error stopping scanner:', err));
+  }
+}
+
+function onScanSuccess(decodedText) {
+  try {
+    // If the QR contains JSON data, extract the voucher code field
+    const data = JSON.parse(decodedText);
+    document.getElementById('voucherInput').value = data.code || decodedText;
+  } catch (e) {
+    document.getElementById('voucherInput').value = decodedText;
+  }
+  stopScanner();
+  // Automatically verify the scanned voucher
+  verifyVoucher();
+}
+
+// Clean up camera when leaving the page
+window.addEventListener('beforeunload', () => {
+  if (html5Qrcode && scannerRunning) {
+    html5Qrcode.stop().catch(() => {});
+  }
+});
+</script>
+
+</body>
+</html>
