@@ -6,6 +6,22 @@
   <title>Register Farmer — G2F</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="js/auth.js"></script>
+  <style>
+    .input-error { border-color: var(--danger) !important; box-shadow: 0 0 0 3px rgba(220,53,69,0.15) !important; }
+    .input-ok    { border-color: var(--primary) !important; }
+    .field-hint  { font-size: 0.8rem; margin-top: 4px; }
+    .hint-error  { color: var(--danger); }
+    .hint-ok     { color: var(--primary); }
+    .char-count  { font-size: 0.78rem; color: var(--text-muted); text-align: right; margin-top: 2px; }
+    #printHeader { display: none; }
+    @media print {
+      nav, footer, .page-header, #formCard, .alert-warning, .alert-info, .print-hide { display: none !important; }
+      body, .page { background: white !important; padding: 0 !important; margin: 0 !important; }
+      #voucherResult { display: block !important; }
+      .voucher-result { border: 2px solid #0f5132; border-radius: 8px; padding: 32px; box-shadow: none; }
+      #printHeader { display: flex !important; align-items: flex-start; justify-content: space-between; border-bottom: 3px solid #0f5132; padding-bottom: 16px; margin-bottom: 24px; }
+    }
+  </style>
 </head>
 <body>
 
@@ -43,7 +59,12 @@
       <div class="form-grid">
         <div class="form-group">
           <label for="nin">NIN (11 digits) *</label>
-          <input type="text" id="nin" maxlength="11" placeholder="e.g. 12345678901" />
+          <input type="text" id="nin" maxlength="11" placeholder="e.g. 12345678901"
+            inputmode="numeric"
+            oninput="this.value=this.value.replace(/[^0-9]/g,''); updateCharCount('nin','ninCount',11); validateNIN();"
+            onblur="validateNIN()" />
+          <div class="char-count" id="ninCount">0 / 11 digits</div>
+          <div class="field-hint" id="ninHint"></div>
         </div>
         <div class="form-group">
           <label for="full_name">Full Name *</label>
@@ -51,7 +72,11 @@
         </div>
         <div class="form-group">
           <label for="phone_number">Phone Number *</label>
-          <input type="text" id="phone_number" placeholder="e.g. 08012345678" />
+          <input type="text" id="phone_number" maxlength="14" placeholder="e.g. 08012345678"
+            inputmode="numeric"
+            oninput="this.value=this.value.replace(/[^0-9]/g,''); validatePhone();"
+            onblur="validatePhone()" />
+          <div class="field-hint" id="phoneHint"></div>
         </div>
         <div class="form-group">
           <label for="ward">Ward</label>
@@ -110,14 +135,26 @@
     <!-- VOUCHER RESULT -->
     <div id="voucherResult" class="hidden mt-8">
       <div class="voucher-result">
+        <!-- Print-only header -->
+        <div id="printHeader">
+          <div>
+            <div style="font-weight:800;font-size:1.2rem;color:#0f5132;">🌾 G2F — Government-to-Farmers Direct</div>
+            <div style="font-size:0.85rem;color:#555;">Fertilizer Distribution System</div>
+            <div style="font-size:0.8rem;color:#555;">Gwaram LGA, Jigawa State, Nigeria</div>
+          </div>
+          <div style="text-align:right;font-size:0.82rem;color:#555;">
+            <div style="font-weight:600;">Official Farmer Voucher</div>
+            <div id="printDate"></div>
+          </div>
+        </div>
         <h3>✅ Registration Successful!</h3>
-        <p>Farmer registered and voucher generated. Send this to the farmer via SMS.</p>
+        <p class="print-hide">Farmer registered and voucher generated. Send this to the farmer via SMS.</p>
         <div id="farmerName" class="section-title" style="margin:12px 0;font-size:1.4rem;"></div>
         <div>Voucher Code:</div>
         <div id="voucherCode" class="voucher-code"></div>
         <img id="qrImage" src="" alt="QR Code" />
         <div id="voucherDetails" style="font-size:0.88rem;color:#555;line-height:1.8;margin-top:8px;"></div>
-        <div class="mt-4" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+        <div class="mt-4 print-hide" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="printVoucher()">🖨️ Print Voucher</button>
           <button class="btn btn-outline" style="border-color:var(--green);color:var(--green);" onclick="resetForm()">+ Register Another</button>
         </div>
@@ -151,11 +188,7 @@ async function registerFarmer() {
     actor_role:   user ? user.role : 'officer'
   };
 
-  if (!data.nin || !data.full_name || !data.phone_number || !data.acreage_ha) {
-    err.textContent = '❌ Please fill in all required fields (NIN, Full Name, Phone, Farm Size).';
-    err.classList.remove('hidden');
-    return;
-  }
+  if (!validateForm()) return;
 
   btn.innerHTML = '<span class="spinner"></span> Verifying NIN & Registering...';
   btn.disabled = true;
@@ -224,7 +257,77 @@ function resetForm() {
   document.getElementById('pendingCheckbox').checked = false;
 }
 
-function printVoucher() { window.print(); }
+// ── INPUT VALIDATION ──
+function updateCharCount(inputId, countId, max) {
+  const len = document.getElementById(inputId).value.length;
+  const el  = document.getElementById(countId);
+  el.textContent = len + ' / ' + max + ' digits';
+  el.style.color = len === max ? 'var(--primary)' : 'var(--text-muted)';
+}
+
+function validateNIN() {
+  const input = document.getElementById('nin');
+  const hint  = document.getElementById('ninHint');
+  const val   = input.value;
+  if (!val) { input.classList.remove('input-error','input-ok'); hint.textContent=''; return false; }
+  if (val.length < 11) {
+    input.classList.add('input-error'); input.classList.remove('input-ok');
+    hint.className = 'field-hint hint-error';
+    hint.textContent = '❌ NIN must be exactly 11 digits (' + (11 - val.length) + ' more needed)';
+    return false;
+  }
+  input.classList.add('input-ok'); input.classList.remove('input-error');
+  hint.className = 'field-hint hint-ok'; hint.textContent = '✅ NIN looks good';
+  return true;
+}
+
+function validatePhone() {
+  const input = document.getElementById('phone_number');
+  const hint  = document.getElementById('phoneHint');
+  const val   = input.value;
+  if (!val) { input.classList.remove('input-error','input-ok'); hint.textContent=''; return false; }
+  if (val.length < 10) {
+    input.classList.add('input-error'); input.classList.remove('input-ok');
+    hint.className = 'field-hint hint-error';
+    hint.textContent = '❌ Enter a valid phone number (e.g. 08012345678)';
+    return false;
+  }
+  input.classList.add('input-ok'); input.classList.remove('input-error');
+  hint.className = 'field-hint hint-ok'; hint.textContent = '✅ Phone number looks good';
+  return true;
+}
+
+function validateForm() {
+  const err = document.getElementById('errorBox');
+  err.classList.add('hidden');
+  const full_name = document.getElementById('full_name').value.trim();
+  const acreage   = parseFloat(document.getElementById('acreage_ha').value);
+  const ward      = document.getElementById('ward').value;
+  if (!full_name) {
+    err.textContent = '❌ Please enter the farmer\'s full name.'; err.classList.remove('hidden'); return false;
+  }
+  if (!validateNIN()) {
+    err.textContent = '❌ NIN must be exactly 11 digits with no letters.'; err.classList.remove('hidden'); return false;
+  }
+  if (!validatePhone()) {
+    err.textContent = '❌ Please enter a valid phone number.'; err.classList.remove('hidden'); return false;
+  }
+  if (!ward) {
+    err.textContent = '❌ Please select a ward.'; err.classList.remove('hidden'); return false;
+  }
+  if (!acreage || acreage <= 0) {
+    err.textContent = '❌ Farm size must be greater than 0 hectares.'; err.classList.remove('hidden'); return false;
+  }
+  if (acreage > 20) {
+    err.textContent = '❌ Farm size cannot exceed 20 hectares. Please verify.'; err.classList.remove('hidden'); return false;
+  }
+  return true;
+}
+
+function printVoucher() {
+  document.getElementById('printDate').textContent = 'Date: ' + new Date().toLocaleDateString('en-NG', {year:'numeric', month:'long', day:'numeric'});
+  window.print();
+}
 </script>
 
 </body>
