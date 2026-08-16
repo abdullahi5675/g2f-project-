@@ -35,6 +35,49 @@
       ℹ️ In the real system, agents use USSD (*XXX#) on any basic phone. This web interface simulates that process for demonstration.
     </div>
 
+    <!-- NIN SEARCH -->
+    <div class="card mb-8" id="ninSearchCard">
+      <div class="card-title"><div class="icon">🔎</div> Search Farmer by NIN</div>
+      <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">When a farmer arrives at the distribution point, search their NIN to pull up their record.</p>
+      <div class="form-group mb-4">
+        <label for="ninSearch">Farmer's NIN</label>
+        <div style="display:flex; gap:10px;">
+          <input type="text" id="ninSearch" maxlength="11" inputmode="numeric"
+            oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+            placeholder="Enter 11-digit NIN" style="flex:1; font-family:monospace; font-size:1.1rem; letter-spacing:1px;">
+          <button class="btn btn-primary" onclick="searchByNIN()">Search</button>
+        </div>
+      </div>
+      <div id="ninError" class="alert alert-error hidden"></div>
+      <!-- Farmer Record Card -->
+      <div id="farmerCard" class="hidden" style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:8px;">
+        <div style="background:var(--primary); color:white; padding:14px 20px; font-weight:700; font-size:1rem;">✅ Farmer Found</div>
+        <div style="padding:20px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:0.92rem;">
+            <div><span style="color:var(--text-muted); font-size:0.8rem;">FULL NAME</span><br><b id="fc_name"></b></div>
+            <div><span style="color:var(--text-muted); font-size:0.8rem;">NIN</span><br><b id="fc_nin" style="font-family:monospace;"></b></div>
+            <div><span style="color:var(--text-muted); font-size:0.8rem;">WARD</span><br><b id="fc_ward"></b></div>
+            <div><span style="color:var(--text-muted); font-size:0.8rem;">VILLAGE</span><br><b id="fc_village"></b></div>
+            <div><span style="color:var(--text-muted); font-size:0.8rem;">CROP</span><br><b id="fc_crop"></b></div>
+            <div><span style="color:var(--text-muted); font-size:0.8rem;">FARM SIZE</span><br><b id="fc_acreage"></b></div>
+          </div>
+          <div id="fc_voucher_section" style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; font-size:0.92rem;">
+              <div><span style="color:var(--text-muted); font-size:0.8rem;">VOUCHER CODE</span><br><b id="fc_code" style="font-family:monospace;"></b></div>
+              <div><span style="color:var(--text-muted); font-size:0.8rem;">BAGS ALLOCATED</span><br><b id="fc_alloc"></b></div>
+              <div><span style="color:var(--text-muted); font-size:0.8rem;">BAGS REMAINING</span><br><b id="fc_remaining"></b></div>
+            </div>
+            <div style="margin-top:8px;"><span style="color:var(--text-muted); font-size:0.8rem;">DISTRIBUTION POINT</span><br><b id="fc_point"></b></div>
+          </div>
+          <div id="fc_no_voucher" class="alert alert-warning hidden" style="margin-top:12px;">⚠️ This farmer has no voucher yet. They may still be pending supervisor approval.</div>
+          <div style="margin-top:20px; display:flex; gap:10px;">
+            <button class="btn btn-primary" id="proceedBtn" onclick="proceedToDistribute()" style="flex:1;">✅ Proceed to Distribute Bags</button>
+            <button class="btn btn-outline btn-sm" style="border-color:var(--text-muted); color:var(--text-muted);" onclick="clearNINSearch()">✕ Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- STEP 1: VERIFY -->
     <div class="card" id="step1">
       <div class="card-title"><div class="icon">🔍</div> Step 1 — Verify Voucher</div>
@@ -192,14 +235,84 @@ async function redeemVoucher() {
 function resetAgent() {
   currentVoucher = null;
   document.getElementById('voucherInput').value = '';
+  document.getElementById('ninSearch').value = '';
   document.getElementById('step1').classList.remove('hidden');
   document.getElementById('step2').classList.add('hidden');
   document.getElementById('step3').classList.add('hidden');
   document.getElementById('verifyError').classList.add('hidden');
+  document.getElementById('ninSearchCard').classList.remove('hidden');
+  clearNINSearch();
 }
 
 let html5Qrcode = null;
 let scannerRunning = false;
+
+// ── NIN SEARCH FUNCTIONS ──
+async function searchByNIN() {
+  const nin = document.getElementById('ninSearch').value.trim();
+  const err = document.getElementById('ninError');
+  err.classList.add('hidden');
+  document.getElementById('farmerCard').classList.add('hidden');
+  if (!nin || nin.length !== 11) {
+    err.textContent = '❌ Please enter a valid 11-digit NIN.';
+    err.classList.remove('hidden');
+    return;
+  }
+  try {
+    const res  = await fetch('/api/farmers/search?nin=' + nin);
+    const data = await res.json();
+    if (!res.ok) {
+      err.textContent = '❌ ' + data.error;
+      err.classList.remove('hidden');
+      return;
+    }
+    const f = data.farmer;
+    const v = data.voucher;
+    document.getElementById('fc_name').textContent    = f.full_name;
+    document.getElementById('fc_nin').textContent     = f.nin.slice(0,4) + '****' + f.nin.slice(-3);
+    document.getElementById('fc_ward').textContent    = f.ward || '—';
+    document.getElementById('fc_village').textContent = f.village || '—';
+    document.getElementById('fc_crop').textContent    = f.crop_type || '—';
+    document.getElementById('fc_acreage').textContent = f.acreage_ha ? f.acreage_ha + ' ha' : '—';
+    if (v) {
+      const remaining = v.bags_allocated - v.bags_redeemed;
+      document.getElementById('fc_code').textContent      = v.voucher_code;
+      document.getElementById('fc_alloc').textContent     = v.bags_allocated + ' bags';
+      document.getElementById('fc_remaining').textContent = remaining + ' bags';
+      document.getElementById('fc_point').textContent     = v.distribution_point || '—';
+      document.getElementById('fc_voucher_section').classList.remove('hidden');
+      document.getElementById('fc_no_voucher').classList.add('hidden');
+      document.getElementById('proceedBtn').disabled = remaining <= 0;
+      document.getElementById('proceedBtn').textContent = remaining <= 0 ? '✅ All Bags Already Collected' : '✅ Proceed to Distribute Bags';
+      // store voucher code for quick fill
+      document.getElementById('proceedBtn').dataset.code = v.voucher_code;
+    } else {
+      document.getElementById('fc_voucher_section').classList.add('hidden');
+      document.getElementById('fc_no_voucher').classList.remove('hidden');
+      document.getElementById('proceedBtn').disabled = true;
+      document.getElementById('proceedBtn').textContent = '⚠️ No Voucher Available';
+    }
+    document.getElementById('farmerCard').classList.remove('hidden');
+  } catch (e) {
+    err.textContent = '❌ Network error. Is the server running?';
+    err.classList.remove('hidden');
+  }
+}
+
+function proceedToDistribute() {
+  const code = document.getElementById('proceedBtn').dataset.code;
+  document.getElementById('voucherInput').value = code;
+  document.getElementById('ninSearchCard').classList.add('hidden');
+  document.getElementById('step1').classList.remove('hidden');
+  // Auto-verify
+  verifyVoucher();
+}
+
+function clearNINSearch() {
+  document.getElementById('ninSearch').value = '';
+  document.getElementById('farmerCard').classList.add('hidden');
+  document.getElementById('ninError').classList.add('hidden');
+}
 
 function startScanner() {
   const readerDiv = document.getElementById('reader');

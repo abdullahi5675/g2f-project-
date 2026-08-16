@@ -53,6 +53,30 @@ router.post('/signup', async (req, res) => {
   }
 });
 
+// Reset Password (Forgot Password)
+router.post('/reset-password', async (req, res) => {
+  const { email, new_password, confirm_password } = req.body;
+  if (!email || !new_password || !confirm_password)
+    return res.status(400).json({ error: 'All fields are required.' });
+  if (new_password !== confirm_password)
+    return res.status(400).json({ error: 'Passwords do not match.' });
+  if (new_password.length < 6)
+    return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  try {
+    const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [email]);
+    if (rows.length === 0)
+      return res.status(404).json({ error: 'No account found with that email address.' });
+    await pool.query('UPDATE users SET password = $1 WHERE username = $2', [new_password, email]);
+    await pool.query(
+      'INSERT INTO audit_log (actor_name, actor_role, action_type, description) VALUES ($1, $2, $3, $4)',
+      [rows[0].full_name, rows[0].role, 'Password Reset', 'User reset their password via forgot password']
+    );
+    res.json({ message: 'Password reset successfully. You can now log in.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Logout — stateless token clearance on client
 router.post('/logout', (req, res) => {
   res.json({ message: 'Logged out successfully' });

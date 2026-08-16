@@ -2,50 +2,98 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login — G2F</title>
   <link rel="stylesheet" href="css/style.css">
-  <script src="js/auth.js"></script>
 </head>
 <body>
   <div class="page" style="display:flex; align-items:center; justify-content:center; min-height:80vh;">
-    <div class="card" style="width:100%; max-width:400px; padding:40px;">
-      <h2 style="text-align:center; margin-bottom:20px;">G2F Login</h2>
-      <div id="errorMsg" class="alert alert-error hidden"></div>
-      <div class="form-group mb-4">
-        <label>Username</label>
-        <input type="text" id="username" placeholder="Enter username">
+    <div class="card" style="width:100%; max-width:420px; padding:40px;">
+
+      <!-- LOGIN FORM -->
+      <div id="loginSection">
+        <div style="text-align:center; margin-bottom:24px;">
+          <div style="font-size:2.5rem; margin-bottom:8px;">🌾</div>
+          <h2 style="margin-bottom:4px;">G2F System Login</h2>
+          <p style="color:var(--text-muted); font-size:0.9rem;">Gwaram LGA Fertilizer Distribution</p>
+        </div>
+        <div id="errorMsg" class="alert alert-error hidden"></div>
+        <div class="form-group mb-4">
+          <label>Email Address</label>
+          <input type="text" id="username" placeholder="Enter your email address">
+        </div>
+        <div class="form-group mb-4" style="position:relative;">
+          <label>Password</label>
+          <input type="password" id="password" placeholder="Enter password" style="padding-right:40px;">
+          <span style="position:absolute; right:12px; top:38px; cursor:pointer;" onclick="togglePassword('password', this)">👁️</span>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="login()">Login</button>
+        <div style="text-align:center; margin-top:16px; font-size:0.9rem;">
+          <span style="color:var(--text-muted);">Don't have an account? </span><a href="signup.html">Register here</a>
+        </div>
+        <div style="text-align:center; margin-top:10px; font-size:0.9rem;">
+          <a href="#" onclick="showForgot()" style="color:var(--text-muted); text-decoration:underline;">Forgot Password?</a>
+        </div>
       </div>
-      <div class="form-group mb-8" style="position:relative;">
-        <label>Password</label>
-        <input type="password" id="password" placeholder="Enter password" style="padding-right:40px;">
-        <span style="position:absolute; right:12px; top:38px; cursor:pointer;" onclick="togglePassword('password', this)">👁️</span>
+
+      <!-- FORGOT PASSWORD FORM -->
+      <div id="forgotSection" class="hidden">
+        <div style="text-align:center; margin-bottom:24px;">
+          <div style="font-size:2.5rem; margin-bottom:8px;">🔑</div>
+          <h2 style="margin-bottom:4px;">Reset Password</h2>
+          <p style="color:var(--text-muted); font-size:0.9rem;">Enter your registered email to reset your password</p>
+        </div>
+        <div id="resetError" class="alert alert-error hidden"></div>
+        <div id="resetSuccess" class="alert alert-success hidden"></div>
+        <div class="form-group mb-4">
+          <label>Email Address</label>
+          <input type="text" id="resetEmail" placeholder="Enter your registered email">
+        </div>
+        <div class="form-group mb-4" style="position:relative;">
+          <label>New Password</label>
+          <input type="password" id="newPassword" placeholder="Enter new password" style="padding-right:40px;">
+          <span style="position:absolute; right:12px; top:38px; cursor:pointer;" onclick="togglePassword('newPassword', this)">👁️</span>
+        </div>
+        <div class="form-group mb-4" style="position:relative;">
+          <label>Confirm New Password</label>
+          <input type="password" id="confirmPassword" placeholder="Re-enter new password" style="padding-right:40px;">
+          <span style="position:absolute; right:12px; top:38px; cursor:pointer;" onclick="togglePassword('confirmPassword', this)">👁️</span>
+        </div>
+        <button class="btn btn-primary btn-full" onclick="resetPassword()">Reset Password</button>
+        <div style="text-align:center; margin-top:16px;">
+          <a href="#" onclick="showLogin()" style="color:var(--text-muted); font-size:0.9rem;">← Back to Login</a>
+        </div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="login()">Login</button>
-      <p style="text-align:center; margin-top:16px;">Don't have an account? <a href="signup.html">Register here</a></p>
+
     </div>
   </div>
+
   <script>
     function togglePassword(id, el) {
       const input = document.getElementById(id);
-      if (input.type === 'password') {
-        input.type = 'text';
-        el.textContent = '🙈';
-      } else {
-        input.type = 'password';
-        el.textContent = '👁️';
-      }
+      input.type = input.type === 'password' ? 'text' : 'password';
+      el.textContent = input.type === 'password' ? '👁️' : '🙈';
+    }
+
+    function showForgot() {
+      document.getElementById('loginSection').classList.add('hidden');
+      document.getElementById('forgotSection').classList.remove('hidden');
+      document.getElementById('resetError').classList.add('hidden');
+      document.getElementById('resetSuccess').classList.add('hidden');
+    }
+
+    function showLogin() {
+      document.getElementById('forgotSection').classList.add('hidden');
+      document.getElementById('loginSection').classList.remove('hidden');
     }
 
     async function login() {
-      const username = document.getElementById('username').value;
+      const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value;
-      const btn = document.querySelector('button');
-      
-      if(!username || !password) return alert('Fill all fields');
-      
-      btn.innerText = 'Loading...';
+      const btn = document.querySelector('#loginSection button.btn-primary');
+      if (!username || !password) return showError('errorMsg', 'Please fill in all fields.');
+      btn.innerText = 'Logging in...';
       btn.disabled = true;
-      
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
@@ -53,23 +101,74 @@
           body: JSON.stringify({username, password})
         });
         const data = await res.json();
-        if(res.ok) {
+        if (res.ok) {
           localStorage.setItem('user', JSON.stringify(data.user));
-          localStorage.setItem('auth_token', data.token);
-          if(data.user.role === 'officer') window.location.href = '/register';
-          else if(data.user.role === 'agent') window.location.href = '/agent';
-          else if(data.user.role === 'supervisor') window.location.href = '/dashboard';
+          if (data.user.role === 'officer') window.location.href = '/register.html';
+          else if (data.user.role === 'agent') window.location.href = '/agent.html';
+          else if (data.user.role === 'supervisor') window.location.href = '/dashboard.html';
         } else {
-          document.getElementById('errorMsg').innerText = data.error;
-          document.getElementById('errorMsg').classList.remove('hidden');
+          showError('errorMsg', data.error);
         }
       } catch (err) {
-        alert('Error logging in');
-      } finally {
-        btn.innerText = 'Login';
-        btn.disabled = false;
+        showError('errorMsg', 'Network error. Is the server running?');
       }
+      btn.innerText = 'Login';
+      btn.disabled = false;
     }
+
+    async function resetPassword() {
+      const email           = document.getElementById('resetEmail').value.trim();
+      const new_password    = document.getElementById('newPassword').value;
+      const confirm_password = document.getElementById('confirmPassword').value;
+      const btn = document.querySelector('#forgotSection button.btn-primary');
+
+      document.getElementById('resetError').classList.add('hidden');
+      document.getElementById('resetSuccess').classList.add('hidden');
+
+      if (!email || !new_password || !confirm_password)
+        return showError('resetError', 'Please fill in all fields.');
+      if (new_password !== confirm_password)
+        return showError('resetError', 'Passwords do not match.');
+      if (new_password.length < 6)
+        return showError('resetError', 'Password must be at least 6 characters.');
+
+      btn.innerText = 'Resetting...';
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, new_password, confirm_password})
+        });
+        const data = await res.json();
+        if (res.ok) {
+          const s = document.getElementById('resetSuccess');
+          s.textContent = '✅ ' + data.message;
+          s.classList.remove('hidden');
+          setTimeout(() => showLogin(), 2500);
+        } else {
+          showError('resetError', data.error);
+        }
+      } catch (err) {
+        showError('resetError', 'Network error. Is the server running?');
+      }
+      btn.innerText = 'Reset Password';
+      btn.disabled = false;
+    }
+
+    function showError(id, msg) {
+      const el = document.getElementById(id);
+      el.textContent = '❌ ' + msg;
+      el.classList.remove('hidden');
+    }
+
+    // Press Enter to login
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        if (!document.getElementById('forgotSection').classList.contains('hidden')) resetPassword();
+        else login();
+      }
+    });
   </script>
 </body>
 </html>

@@ -92,6 +92,23 @@ router.post('/register', async (req, res) => {
 });
 
 
+// ─── Search farmer by NIN (for agent portal) ───
+router.get('/search', async (req, res) => {
+  const { nin } = req.query;
+  if (!nin) return res.status(400).json({ error: 'NIN is required.' });
+  try {
+    const farmerRes = await pool.query('SELECT * FROM farmers WHERE nin = $1', [nin]);
+    if (farmerRes.rows.length === 0)
+      return res.status(404).json({ error: 'No farmer found with this NIN. Make sure the farmer is registered first.' });
+    const farmer = farmerRes.rows[0];
+    const voucherRes = await pool.query('SELECT * FROM vouchers WHERE farmer_id = $1', [farmer.id]);
+    const voucher = voucherRes.rows[0] || null;
+    res.json({ farmer, voucher });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error.' });
+  }
+});
+
 // ─── Get all farmers ───
 router.get('/', async (req, res) => {
   try {

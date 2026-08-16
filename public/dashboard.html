@@ -83,6 +83,11 @@
           <div class="value" id="statPending">—</div>
           <div class="sub">Vouchers not yet redeemed</div>
         </div>
+        <div class="stat-card" style="border-left:4px solid #6f42c1;">
+          <div class="label">Total Bags Collected</div>
+          <div class="value" id="statBagsCollected" style="color:#6f42c1;">—</div>
+          <div class="sub">Actually handed out to farmers</div>
+        </div>
       </div>
 
       <!-- PROGRESS BAR -->
@@ -217,6 +222,7 @@ async function loadStats() {
     document.getElementById('statBagsAlloc').textContent = data.bags_allocated;
     document.getElementById('statBagsDist').textContent  = data.bags_distributed;
     document.getElementById('statPending').textContent   = data.pending;
+    document.getElementById('statBagsCollected').textContent = data.bags_distributed;
 
     const pct = data.bags_allocated > 0
       ? Math.round((data.bags_distributed / data.bags_allocated) * 100)
@@ -249,7 +255,7 @@ async function loadStats() {
           <span style="font-size:1.5rem;">⚠️</span>
           <div>
             <h4 style="color:var(--danger); font-size:1rem; margin-bottom:4px;">${fa.alert_type}</h4>
-            <p style="font-size:0.85rem; color:var(--text-muted);">${fa.description} — ${new Date(fa.detected_at).toLocaleString()}</p>
+            <p style="font-size:0.85rem; color:var(--text-muted);">${fa.description} — ${new Date(fa.detected_at).toLocaleString('en-NG', {timeZone:'Africa/Lagos', dateStyle:'medium', timeStyle:'short'})}</p>
           </div>
         </div>
       `).join('');
@@ -262,7 +268,7 @@ async function loadStats() {
     if (data.audit_log && data.audit_log.length > 0) {
       auditTbody.innerHTML = data.audit_log.map(a => `
         <tr>
-          <td style="font-size:0.85rem">${new Date(a.timestamp).toLocaleString()}</td>
+          <td style="font-size:0.85rem">${new Date(a.timestamp).toLocaleString('en-NG', {timeZone:'Africa/Lagos', dateStyle:'medium', timeStyle:'short'})}</td>
           <td><b>${a.action_type}</b></td>
           <td>${a.actor_name}</td>
           <td><span class="badge badge-gray">${a.actor_role}</span></td>
