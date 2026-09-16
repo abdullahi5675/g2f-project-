@@ -138,7 +138,13 @@ async function loadFarmers() {
     vouchers.forEach(v => { vMap[v.farmer_id] = v; });
 
     allFarmers = farmers.map(f => ({ ...f, voucher: vMap[f.id] || null }));
-    renderTable(allFarmers);
+
+    const searchVal = document.getElementById('searchBox') ? document.getElementById('searchBox').value.trim() : '';
+    if (searchVal) {
+      filterTable();
+    } else {
+      renderTable(allFarmers);
+    }
   } catch (e) {
     document.getElementById('loadingMsg').textContent = '❌ Error loading farmers. Is the server running?';
   }
@@ -260,6 +266,7 @@ function openRedeemModal(farmerId) {
 function closeModal() {
   document.getElementById('redeemModal').style.display = 'none';
   currentVoucher = null;
+  loadFarmers();
 }
 
 async function redeemVoucher() {
@@ -304,6 +311,9 @@ async function redeemVoucher() {
         'Bags Remaining: <b>' + data.bags_remaining + '</b><br>' +
         'Recorded by: <b>' + agent + '</b>';
       document.getElementById('modalSuccess').classList.remove('hidden');
+
+      // Auto-refresh farmer list in background immediately so status updates to Fully Collected
+      await loadFarmers();
     }
   } catch (e) {
     err.textContent = '❌ Network error.'; err.classList.remove('hidden');
