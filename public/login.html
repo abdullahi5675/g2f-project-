@@ -103,6 +103,7 @@
         const data = await res.json();
         if (res.ok) {
           localStorage.setItem('user', JSON.stringify(data.user));
+          localStorage.setItem('auth_token', data.token);
           if (data.user.role === 'officer') window.location.href = '/register.html';
           else if (data.user.role === 'agent') window.location.href = '/agent.html';
           else if (data.user.role === 'supervisor') window.location.href = '/dashboard.html';

@@ -48,7 +48,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'g2f_super_secret_jwt_key_2026';
 // API Authentication Middleware — protects all /api routes except login/signup/logout
 app.use('/api', (req, res, next) => {
   // Allow auth endpoints without a token
-  if (req.path === '/auth/login' || req.path === '/auth/signup' || req.path === '/auth/logout') {
+  if (req.path === '/auth/login' || req.path === '/auth/signup' || req.path === '/auth/logout' || req.path === '/auth/reset-password') {
     return next();
   }
 

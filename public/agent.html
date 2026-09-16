@@ -7,6 +7,23 @@
   <link rel="stylesheet" href="css/style.css">
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="js/auth.js"></script>
+  <style>
+    .farmer-row td { vertical-align: middle; }
+    .detail-panel {
+      display: none;
+      background: var(--bg-page);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-top: 12px;
+    }
+    .detail-panel.open { display: block; animation: fadeIn 0.3s ease; }
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .info-grid div span { display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .info-grid div b { font-size: 0.95rem; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+    @media (max-width: 768px) { .info-grid { grid-template-columns: 1fr; } }
+  </style>
 </head>
 <body>
 
@@ -17,179 +34,245 @@
     <a href="/register">Register</a>
     <a href="/dashboard">Dashboard</a>
     <a href="/agent" class="active">Agent</a>
-    <a href="/sms-preview">SMS Preview</a>
   </div>
 </nav>
 
 <div class="page-header">
   <div class="page" style="padding-top:0;padding-bottom:0">
     <h1>📡 Distribution Agent Portal</h1>
-    <p>Verify farmer vouchers and record fertilizer collection at distribution points</p>
+    <p>View registered farmers, verify their details, and record fertilizer collection</p>
   </div>
 </div>
 
 <div class="page">
-  <div style="max-width:680px;margin:0 auto;">
 
-    <div class="alert alert-info mb-4">
-      ℹ️ In the real system, agents use USSD (*XXX#) on any basic phone. This web interface simulates that process for demonstration.
-    </div>
+  <!-- Redemption modal (hidden by default) -->
+  <div id="redeemModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:999; align-items:center; justify-content:center;">
+    <div class="card" style="width:100%; max-width:500px; margin:20px; position:relative;">
+      <button onclick="closeModal()" style="position:absolute; top:12px; right:12px; background:none; border:none; font-size:1.4rem; cursor:pointer; color:var(--text-muted);">✕</button>
+      <div class="card-title"><div class="icon">✅</div> Confirm Bag Distribution</div>
 
-    <!-- NIN SEARCH -->
-    <div class="card mb-8" id="ninSearchCard">
-      <div class="card-title"><div class="icon">🔎</div> Search Farmer by NIN</div>
-      <p style="font-size:0.9rem; color:var(--text-muted); margin-bottom:16px;">When a farmer arrives at the distribution point, search their NIN to pull up their record.</p>
-      <div class="form-group mb-4">
-        <label for="ninSearch">Farmer's NIN</label>
-        <div style="display:flex; gap:10px;">
-          <input type="text" id="ninSearch" maxlength="11" inputmode="numeric"
-            oninput="this.value=this.value.replace(/[^0-9]/g,'')"
-            placeholder="Enter 11-digit NIN" style="flex:1; font-family:monospace; font-size:1.1rem; letter-spacing:1px;">
-          <button class="btn btn-primary" onclick="searchByNIN()">Search</button>
+      <!-- Step A: farmer summary -->
+      <div id="modalSummary" style="background:var(--bg-page); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:20px; font-size:0.93rem; line-height:1.8;"></div>
+
+      <!-- Step B: redeem -->
+      <div id="modalRedeemStep">
+        <div class="form-group mb-4">
+          <label for="bagsInput">Number of Bags to Collect Now</label>
+          <input type="number" id="bagsInput" min="1" placeholder="Enter number of bags">
+          <small id="bagsHint" class="text-gray"></small>
+        </div>
+        <div id="redeemError" class="alert alert-error hidden"></div>
+        <div style="display:flex; gap:12px;">
+          <button class="btn btn-primary" style="flex:1;" id="redeemBtn" onclick="redeemVoucher()">✅ Confirm & Record Collection</button>
+          <button class="btn btn-outline btn-sm" style="border-color:var(--text-muted); color:var(--text-muted);" onclick="closeModal()">Cancel</button>
         </div>
       </div>
-      <div id="ninError" class="alert alert-error hidden"></div>
-      <!-- Farmer Record Card -->
-      <div id="farmerCard" class="hidden" style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:8px;">
-        <div style="background:var(--primary); color:white; padding:14px 20px; font-weight:700; font-size:1rem;">✅ Farmer Found</div>
-        <div style="padding:20px;">
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:0.92rem;">
-            <div><span style="color:var(--text-muted); font-size:0.8rem;">FULL NAME</span><br><b id="fc_name"></b></div>
-            <div><span style="color:var(--text-muted); font-size:0.8rem;">NIN</span><br><b id="fc_nin" style="font-family:monospace;"></b></div>
-            <div><span style="color:var(--text-muted); font-size:0.8rem;">WARD</span><br><b id="fc_ward"></b></div>
-            <div><span style="color:var(--text-muted); font-size:0.8rem;">VILLAGE</span><br><b id="fc_village"></b></div>
-            <div><span style="color:var(--text-muted); font-size:0.8rem;">CROP</span><br><b id="fc_crop"></b></div>
-            <div><span style="color:var(--text-muted); font-size:0.8rem;">FARM SIZE</span><br><b id="fc_acreage"></b></div>
-          </div>
-          <div id="fc_voucher_section" style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; font-size:0.92rem;">
-              <div><span style="color:var(--text-muted); font-size:0.8rem;">VOUCHER CODE</span><br><b id="fc_code" style="font-family:monospace;"></b></div>
-              <div><span style="color:var(--text-muted); font-size:0.8rem;">BAGS ALLOCATED</span><br><b id="fc_alloc"></b></div>
-              <div><span style="color:var(--text-muted); font-size:0.8rem;">BAGS REMAINING</span><br><b id="fc_remaining"></b></div>
-            </div>
-            <div style="margin-top:8px;"><span style="color:var(--text-muted); font-size:0.8rem;">DISTRIBUTION POINT</span><br><b id="fc_point"></b></div>
-          </div>
-          <div id="fc_no_voucher" class="alert alert-warning hidden" style="margin-top:12px;">⚠️ This farmer has no voucher yet. They may still be pending supervisor approval.</div>
-          <div style="margin-top:20px; display:flex; gap:10px;">
-            <button class="btn btn-primary" id="proceedBtn" onclick="proceedToDistribute()" style="flex:1;">✅ Proceed to Distribute Bags</button>
-            <button class="btn btn-outline btn-sm" style="border-color:var(--text-muted); color:var(--text-muted);" onclick="clearNINSearch()">✕ Clear</button>
-          </div>
-        </div>
+
+      <!-- Step C: success -->
+      <div id="modalSuccess" class="hidden" style="text-align:center; padding:12px 0;">
+        <div style="font-size:3rem; margin-bottom:12px;">✅</div>
+        <h3 id="modalSuccessMsg" style="color:var(--primary); margin-bottom:8px;"></h3>
+        <div id="modalSuccessDetails" style="font-size:0.9rem; color:var(--text-muted); line-height:1.8; margin-bottom:20px;"></div>
+        <div class="alert alert-info" style="text-align:left; font-size:0.88rem;">📱 An SMS confirmation will be sent to the farmer's phone number.</div>
+        <button class="btn btn-primary mt-4" onclick="closeModal(); loadFarmers();">Done</button>
       </div>
     </div>
-
-    <!-- STEP 1: VERIFY -->
-    <div class="card" id="step1">
-      <div class="card-title"><div class="icon">🔍</div> Step 1 — Verify Voucher</div>
-      <div class="form-group mb-4" style="display:none;">
-        <label for="agentName">Your Name (Agent)</label>
-        <input type="text" id="agentName" placeholder="e.g. Malam Ibrahim" />
-      </div>
-      <div class="form-group mb-4">
-        <label for="voucherInput">Enter Farmer's Voucher Code</label>
-        <div style="display:flex;gap:10px;">
-          <input type="text" id="voucherInput" placeholder="e.g. GF-12345678-1" style="font-family:monospace;font-size:1.1rem;letter-spacing:1px; flex:1;" />
-          <button class="btn btn-outline" style="border-color:var(--green);color:var(--green)" onclick="startScanner()">📸 Scan QR</button>
-        </div>
-      </div>
-      <div id="reader" style="width:100%; max-width:500px; margin: 0 auto 20px auto; display:none;"></div>
-      <button class="btn btn-primary btn-full" id="verifyBtn" onclick="verifyVoucher()">
-        🔍 Verify Voucher
-      </button>
-      <div id="verifyError" class="alert alert-error hidden mt-4"></div>
-    </div>
-
-    <!-- STEP 2: CONFIRM & REDEEM -->
-    <div class="card hidden mt-8" id="step2">
-      <div class="card-title"><div class="icon">✅</div> Step 2 — Confirm & Record Collection</div>
-      <div id="farmerInfo" class="card" style="background:var(--green-lite);border-color:var(--green);margin-bottom:20px;"></div>
-      <div class="form-group mb-4">
-        <label for="bagsInput">Number of Bags to Collect Now</label>
-        <input type="number" id="bagsInput" min="1" placeholder="Enter bags" />
-        <small id="bagsHint" class="text-gray"></small>
-      </div>
-      <div style="display:flex;gap:12px;">
-        <button class="btn btn-primary" style="flex:1" id="redeemBtn" onclick="redeemVoucher()">✅ Confirm & Record</button>
-        <button class="btn btn-outline" style="border-color:var(--gray);color:var(--gray)" onclick="resetAgent()">← Back</button>
-      </div>
-      <div id="redeemError" class="alert alert-error hidden mt-4"></div>
-    </div>
-
-    <!-- STEP 3: SUCCESS -->
-    <div class="card hidden mt-8" id="step3" style="text-align:center;border:2px solid var(--green)">
-      <div style="font-size:3rem;margin-bottom:12px;">✅</div>
-      <h3 id="successMsg" style="color:var(--green);font-size:1.3rem;margin-bottom:8px;"></h3>
-      <div id="successDetails" style="font-size:0.9rem;color:var(--gray);line-height:1.8;margin-bottom:20px;"></div>
-      <div class="alert alert-info" style="text-align:left">
-        📱 An SMS confirmation has been sent to the farmer's registered phone number.
-      </div>
-      <button class="btn btn-primary mt-4" onclick="resetAgent()">Process Next Farmer</button>
-    </div>
-
   </div>
+
+  <!-- FARMERS TABLE -->
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+      <div class="card-title" style="margin-bottom:0; border:none; padding:0;"><div class="icon">👥</div> Registered Farmers</div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <input type="text" id="searchBox" placeholder="🔍 Search name or NIN..." oninput="filterTable()"
+          style="padding:8px 14px; border:1px solid var(--border-dark); border-radius:var(--radius); font-size:0.9rem; width:220px;">
+        <button class="btn btn-outline btn-sm" onclick="loadFarmers()" style="color:var(--primary); border-color:var(--primary);">↻ Refresh</button>
+      </div>
+    </div>
+
+    <div id="loadingMsg" style="text-align:center; padding:40px; color:var(--text-muted);">Loading farmers...</div>
+    <div id="farmersWrap" class="hidden">
+      <div class="table-wrap">
+        <table id="farmersTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Full Name</th>
+              <th>NIN</th>
+              <th>Ward</th>
+              <th>Crop</th>
+              <th>Bags</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="farmersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <footer>G2F Direct Fertilizer Distribution System | Gwaram LGA, Jigawa State</footer>
 
 <script>
+let allFarmers = [];
 let currentVoucher = null;
 
-async function verifyVoucher() {
-  const code = document.getElementById('voucherInput').value.trim();
-  const err  = document.getElementById('verifyError');
-  err.classList.add('hidden');
+async function loadFarmers() {
+  document.getElementById('loadingMsg').style.display = 'block';
+  document.getElementById('farmersWrap').classList.add('hidden');
 
-  if (!code) {
-    err.textContent = '❌ Please enter a voucher code.';
-    err.classList.remove('hidden');
+  try {
+    const [fRes, vRes] = await Promise.all([
+      authFetch('/api/farmers'),
+      authFetch('/api/vouchers')
+    ]);
+    const farmers  = await fRes.json();
+    const vouchers = await vRes.json();
+
+    // Build voucher map keyed by farmer_id
+    const vMap = {};
+    vouchers.forEach(v => { vMap[v.farmer_id] = v; });
+
+    allFarmers = farmers.map(f => ({ ...f, voucher: vMap[f.id] || null }));
+    renderTable(allFarmers);
+  } catch (e) {
+    document.getElementById('loadingMsg').textContent = '❌ Error loading farmers. Is the server running?';
+  }
+}
+
+function renderTable(list) {
+  const tbody = document.getElementById('farmersBody');
+  document.getElementById('loadingMsg').style.display = 'none';
+  document.getElementById('farmersWrap').classList.remove('hidden');
+
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-gray" style="padding:40px">No farmers found.</td></tr>';
     return;
   }
 
-  const btn = document.getElementById('verifyBtn');
-  btn.innerHTML = '<span class="spinner"></span> Verifying...';
-  btn.disabled  = true;
+  tbody.innerHTML = list.map((f, i) => {
+    const v = f.voucher;
+    const remaining = v ? (v.bags_allocated - v.bags_redeemed) : 0;
+    const statusBadge = !v
+      ? '<span class="badge badge-gray">No Voucher</span>'
+      : v.status === 'redeemed'
+        ? '<span class="badge badge-green">✅ Fully Collected</span>'
+        : v.status === 'partial'
+          ? '<span class="badge badge-gold">⏳ Partial</span>'
+          : '<span class="badge badge-red">⏳ Pending</span>';
 
-  try {
-    const res  = await authFetch('/api/vouchers/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ voucher_code: code })
-    });
-    const data = await res.json();
+    const canDistribute = v && remaining > 0;
 
-    if (!res.ok) {
-      err.innerHTML = '❌ ' + data.error;
-      err.classList.remove('hidden');
-    } else {
-      currentVoucher = data.voucher;
-      const v = data.voucher;
-      const remaining = v.bags_allocated - v.bags_redeemed;
-      document.getElementById('farmerInfo').innerHTML =
-        '<b style="font-size:1.1rem;">' + v.full_name + '</b><br>' +
-        '<span style="font-size:0.85rem;color:var(--gray)">NIN: ' + v.nin.slice(0,4) + '****' + v.nin.slice(-3) + ' &nbsp;|&nbsp; Village: ' + (v.village||'—') + '</span><br><br>' +
-        '🎒 Bags Allocated: <b>' + v.bags_allocated + '</b> &nbsp;|&nbsp; Already Collected: <b>' + v.bags_redeemed + '</b> &nbsp;|&nbsp; Remaining: <b>' + remaining + '</b><br>' +
-        '📍 Assigned Point: <b>' + v.distribution_point + '</b>';
-      document.getElementById('bagsInput').max   = remaining;
-      document.getElementById('bagsInput').value = remaining;
-      document.getElementById('bagsHint').textContent = remaining + ' bag(s) remaining for this farmer.';
-      document.getElementById('step1').classList.add('hidden');
-      document.getElementById('step2').classList.remove('hidden');
-    }
-  } catch (e) {
-    err.textContent = '❌ Network error. Is the server running?';
-    err.classList.remove('hidden');
-  }
+    return `<tr class="farmer-row" data-id="${f.id}">
+      <td>${i + 1}</td>
+      <td><b>${f.full_name}</b><br><small style="color:var(--text-muted);">${f.village || ''}</small></td>
+      <td style="font-family:monospace;">${f.nin.slice(0,4)}****${f.nin.slice(-3)}</td>
+      <td>${f.ward || '—'}</td>
+      <td>${f.crop_type || '—'}</td>
+      <td>${v ? v.bags_allocated + ' bags' : '—'}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="toggleDetail(${f.id})"
+          style="color:var(--primary); border-color:var(--primary); margin-bottom:4px; display:block; width:100%;">
+          👁 View Details
+        </button>
+        ${canDistribute ? `<button class="btn btn-primary btn-sm" onclick="openRedeemModal(${f.id})" style="width:100%;">🎒 Distribute</button>` : ''}
+      </td>
+    </tr>
+    <tr id="detail-row-${f.id}" style="display:none;">
+      <td colspan="8" style="padding:0 16px 16px;">
+        <div class="detail-panel open">
+          <div class="info-grid">
+            <div><span>Full Name</span><b>${f.full_name}</b></div>
+            <div><span>NIN</span><b style="font-family:monospace;">${f.nin.slice(0,4)}****${f.nin.slice(-3)}</b></div>
+            <div><span>Phone Number</span><b>${f.phone_number}</b></div>
+            <div><span>Ward</span><b>${f.ward || '—'}</b></div>
+            <div><span>Village</span><b>${f.village || '—'}</b></div>
+            <div><span>Crop Type</span><b>${f.crop_type || '—'}</b></div>
+            <div><span>Farm Size</span><b>${f.acreage_ha ? f.acreage_ha + ' hectares' : '—'}</b></div>
+            <div><span>Status</span><b>${f.verification_status || 'verified'}</b></div>
+          </div>
+          ${v ? `
+          <div style="border-top:1px solid var(--border); padding-top:16px; margin-top:4px;">
+            <div class="info-grid">
+              <div><span>Voucher Code</span><b style="font-family:monospace; font-size:1rem;">${v.voucher_code}</b></div>
+              <div><span>Distribution Point</span><b>${v.distribution_point || '—'}</b></div>
+              <div><span>Bags Allocated</span><b>${v.bags_allocated}</b></div>
+              <div><span>Bags Collected</span><b>${v.bags_redeemed}</b></div>
+              <div><span>Bags Remaining</span><b style="color:${remaining > 0 ? 'var(--primary)' : 'var(--text-muted)'};">${remaining}</b></div>
+              <div><span>Collection Window</span><b>${new Date(v.collection_start).toLocaleDateString('en-NG')} → ${new Date(v.collection_end).toLocaleDateString('en-NG')}</b></div>
+            </div>
+            ${remaining > 0 ? `<button class="btn btn-primary btn-sm" onclick="openRedeemModal(${f.id})" style="margin-top:8px;">🎒 Distribute Bags Now</button>` : '<p style="color:var(--text-muted); font-size:0.9rem; margin-top:8px;">✅ All bags have been collected for this farmer.</p>'}
+          </div>` : '<p style="color:var(--text-muted); font-size:0.9rem; margin-top:8px;">⚠️ No voucher assigned yet. The farmer may still be pending approval.</p>'}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
 
-  btn.innerHTML = '🔍 Verify Voucher';
-  btn.disabled  = false;
+function toggleDetail(id) {
+  const row = document.getElementById('detail-row-' + id);
+  const isOpen = row.style.display !== 'none';
+  // Close all open detail rows
+  document.querySelectorAll('[id^="detail-row-"]').forEach(r => r.style.display = 'none');
+  // Toggle this one
+  if (!isOpen) row.style.display = 'table-row';
+}
+
+function filterTable() {
+  const q = document.getElementById('searchBox').value.toLowerCase();
+  const filtered = allFarmers.filter(f =>
+    f.full_name.toLowerCase().includes(q) || f.nin.includes(q) || (f.ward || '').toLowerCase().includes(q)
+  );
+  renderTable(filtered);
+}
+
+function openRedeemModal(farmerId) {
+  const f = allFarmers.find(x => x.id === farmerId);
+  if (!f || !f.voucher) return;
+  const v = f.voucher;
+  const remaining = v.bags_allocated - v.bags_redeemed;
+  currentVoucher = { ...v, full_name: f.full_name, farmer_id: f.id };
+
+  document.getElementById('modalSummary').innerHTML = `
+    <b style="font-size:1.05rem;">${f.full_name}</b><br>
+    <span style="color:var(--text-muted); font-size:0.85rem;">NIN: ${f.nin.slice(0,4)}****${f.nin.slice(-3)} &nbsp;|&nbsp; Ward: ${f.ward || '—'}</span><br><br>
+    🎒 Bags Allocated: <b>${v.bags_allocated}</b> &nbsp;|&nbsp; Already Collected: <b>${v.bags_redeemed}</b> &nbsp;|&nbsp; Remaining: <b>${remaining}</b><br>
+    📍 Distribution Point: <b>${v.distribution_point || '—'}</b><br>
+    🔖 Voucher: <b style="font-family:monospace;">${v.voucher_code}</b>
+  `;
+
+  document.getElementById('bagsInput').max   = remaining;
+  document.getElementById('bagsInput').value = remaining;
+  document.getElementById('bagsHint').textContent = remaining + ' bag(s) remaining for this farmer.';
+  document.getElementById('redeemError').classList.add('hidden');
+  document.getElementById('modalRedeemStep').classList.remove('hidden');
+  document.getElementById('modalSuccess').classList.add('hidden');
+
+  const modal = document.getElementById('redeemModal');
+  modal.style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('redeemModal').style.display = 'none';
+  currentVoucher = null;
 }
 
 async function redeemVoucher() {
-  const bags  = document.getElementById('bagsInput').value;
+  if (!currentVoucher) return;
+  const bags = parseInt(document.getElementById('bagsInput').value);
   const user  = JSON.parse(localStorage.getItem('user'));
-  const agent = user ? user.full_name : (document.getElementById('agentName').value.trim() || 'Agent');
+  const agent = user ? user.full_name : 'Agent';
   const err   = document.getElementById('redeemError');
   err.classList.add('hidden');
+
+  if (!bags || bags < 1) {
+    err.textContent = '❌ Please enter a valid number of bags.'; err.classList.remove('hidden'); return;
+  }
 
   const btn = document.getElementById('redeemBtn');
   btn.innerHTML = '<span class="spinner"></span> Recording...';
@@ -200,217 +283,42 @@ async function redeemVoucher() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        voucher_code:    document.getElementById('voucherInput').value.trim(),
+        voucher_code:    currentVoucher.voucher_code,
         agent_name:      agent,
-        bags_to_collect: parseInt(bags),
-        actor_name:      user ? user.full_name : agent,
+        bags_to_collect: bags,
+        actor_name:      agent,
         actor_role:      user ? user.role : 'agent'
       })
     });
     const data = await res.json();
 
     if (!res.ok) {
-      err.textContent = '❌ ' + data.error;
-      err.classList.remove('hidden');
+      err.textContent = '❌ ' + data.error; err.classList.remove('hidden');
     } else {
-      document.getElementById('step2').classList.add('hidden');
-      document.getElementById('successMsg').textContent = data.message;
-      document.getElementById('successDetails').innerHTML =
+      document.getElementById('modalRedeemStep').classList.add('hidden');
+      document.getElementById('modalSuccessMsg').textContent = data.message;
+      document.getElementById('modalSuccessDetails').innerHTML =
         'Voucher: <b>' + data.voucher_code + '</b><br>' +
         'Farmer: <b>' + data.farmer + '</b><br>' +
         'Bags Collected: <b>' + data.bags_collected + '</b><br>' +
         'Bags Remaining: <b>' + data.bags_remaining + '</b><br>' +
         'Recorded by: <b>' + agent + '</b>';
-      document.getElementById('step3').classList.remove('hidden');
+      document.getElementById('modalSuccess').classList.remove('hidden');
     }
   } catch (e) {
-    err.textContent = '❌ Network error.';
-    err.classList.remove('hidden');
+    err.textContent = '❌ Network error.'; err.classList.remove('hidden');
   }
 
-  btn.innerHTML = '✅ Confirm & Record';
+  btn.innerHTML = '✅ Confirm & Record Collection';
   btn.disabled  = false;
 }
 
-function resetAgent() {
-  currentVoucher = null;
-  document.getElementById('voucherInput').value = '';
-  document.getElementById('ninSearch').value = '';
-  document.getElementById('step1').classList.remove('hidden');
-  document.getElementById('step2').classList.add('hidden');
-  document.getElementById('step3').classList.add('hidden');
-  document.getElementById('verifyError').classList.add('hidden');
-  document.getElementById('ninSearchCard').classList.remove('hidden');
-  clearNINSearch();
-}
-
-let html5Qrcode = null;
-let scannerRunning = false;
-
-// ── NIN SEARCH FUNCTIONS ──
-async function searchByNIN() {
-  const nin = document.getElementById('ninSearch').value.trim();
-  const err = document.getElementById('ninError');
-  err.classList.add('hidden');
-  document.getElementById('farmerCard').classList.add('hidden');
-  if (!nin || nin.length !== 11) {
-    err.textContent = '❌ Please enter a valid 11-digit NIN.';
-    err.classList.remove('hidden');
-    return;
-  }
-  try {
-    const res  = await fetch('/api/farmers/search?nin=' + nin);
-    const data = await res.json();
-    if (!res.ok) {
-      err.textContent = '❌ ' + data.error;
-      err.classList.remove('hidden');
-      return;
-    }
-    const f = data.farmer;
-    const v = data.voucher;
-    document.getElementById('fc_name').textContent    = f.full_name;
-    document.getElementById('fc_nin').textContent     = f.nin.slice(0,4) + '****' + f.nin.slice(-3);
-    document.getElementById('fc_ward').textContent    = f.ward || '—';
-    document.getElementById('fc_village').textContent = f.village || '—';
-    document.getElementById('fc_crop').textContent    = f.crop_type || '—';
-    document.getElementById('fc_acreage').textContent = f.acreage_ha ? f.acreage_ha + ' ha' : '—';
-    if (v) {
-      const remaining = v.bags_allocated - v.bags_redeemed;
-      document.getElementById('fc_code').textContent      = v.voucher_code;
-      document.getElementById('fc_alloc').textContent     = v.bags_allocated + ' bags';
-      document.getElementById('fc_remaining').textContent = remaining + ' bags';
-      document.getElementById('fc_point').textContent     = v.distribution_point || '—';
-      document.getElementById('fc_voucher_section').classList.remove('hidden');
-      document.getElementById('fc_no_voucher').classList.add('hidden');
-      document.getElementById('proceedBtn').disabled = remaining <= 0;
-      document.getElementById('proceedBtn').textContent = remaining <= 0 ? '✅ All Bags Already Collected' : '✅ Proceed to Distribute Bags';
-      // store voucher code for quick fill
-      document.getElementById('proceedBtn').dataset.code = v.voucher_code;
-    } else {
-      document.getElementById('fc_voucher_section').classList.add('hidden');
-      document.getElementById('fc_no_voucher').classList.remove('hidden');
-      document.getElementById('proceedBtn').disabled = true;
-      document.getElementById('proceedBtn').textContent = '⚠️ No Voucher Available';
-    }
-    document.getElementById('farmerCard').classList.remove('hidden');
-  } catch (e) {
-    err.textContent = '❌ Network error. Is the server running?';
-    err.classList.remove('hidden');
-  }
-}
-
-function proceedToDistribute() {
-  const code = document.getElementById('proceedBtn').dataset.code;
-  document.getElementById('voucherInput').value = code;
-  document.getElementById('ninSearchCard').classList.add('hidden');
-  document.getElementById('step1').classList.remove('hidden');
-  // Auto-verify
-  verifyVoucher();
-}
-
-function clearNINSearch() {
-  document.getElementById('ninSearch').value = '';
-  document.getElementById('farmerCard').classList.add('hidden');
-  document.getElementById('ninError').classList.add('hidden');
-}
-
-function startScanner() {
-  const readerDiv = document.getElementById('reader');
-  const errDiv = document.getElementById('verifyError');
-  errDiv.classList.add('hidden');
-
-  // If scanner is already running, stop it
-  if (scannerRunning) {
-    stopScanner();
-    return;
-  }
-
-  // Check if camera API is available (requires HTTPS or localhost)
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    errDiv.innerHTML = '📸 <b>Camera not available.</b><br>' +
-      'Camera access requires a secure connection (HTTPS) or localhost.<br><br>' +
-      '💡 <b>Tip:</b> Type the voucher code manually in the field above instead.';
-    errDiv.classList.remove('hidden');
-    return;
-  }
-
-  readerDiv.style.display = 'block';
-  readerDiv.innerHTML = '<p style="text-align:center; padding:20px; color:var(--text-muted);">Starting camera...</p>';
-
-  if (!html5Qrcode) {
-    html5Qrcode = new Html5Qrcode("reader");
-  }
-
-  // Try back camera first (better for scanning), fallback to any available camera
-  html5Qrcode.start(
-    { facingMode: "environment" },
-    { fps: 10, qrbox: { width: 250, height: 250 } },
-    onScanSuccess,
-    () => {} // Ignore per-frame scan failures (expected while looking for QR)
-  ).then(() => {
-    scannerRunning = true;
-    // Add a stop button below the scanner
-    const existingBtn = document.getElementById('stopScanBtn');
-    if (existingBtn) existingBtn.remove();
-    const stopBtn = document.createElement('button');
-    stopBtn.className = 'btn btn-outline btn-full';
-    stopBtn.style.cssText = 'border-color:var(--danger); color:var(--danger); margin-top:12px;';
-    stopBtn.textContent = '✕ Stop Scanner';
-    stopBtn.id = 'stopScanBtn';
-    stopBtn.onclick = stopScanner;
-    readerDiv.parentNode.insertBefore(stopBtn, readerDiv.nextSibling);
-  }).catch(err => {
-    console.error('Camera error:', err);
-    readerDiv.style.display = 'none';
-
-    let message = '📸 <b>Could not start camera.</b><br>';
-    const errStr = err.toString();
-    if (errStr.includes('NotReadableError')) {
-      message += 'The camera may be in use by another application. Close other apps using the camera and try again.';
-    } else if (errStr.includes('NotAllowedError')) {
-      message += 'Camera permission was denied. Please allow camera access in your browser settings and reload the page.';
-    } else if (errStr.includes('NotFoundError')) {
-      message += 'No camera was found on this device.';
-    } else {
-      message += 'Error: ' + errStr;
-    }
-    message += '<br><br>💡 <b>Tip:</b> You can type the voucher code manually in the field above.';
-
-    errDiv.innerHTML = message;
-    errDiv.classList.remove('hidden');
-  });
-}
-
-function stopScanner() {
-  if (html5Qrcode && scannerRunning) {
-    html5Qrcode.stop().then(() => {
-      scannerRunning = false;
-      document.getElementById('reader').style.display = 'none';
-      const stopBtn = document.getElementById('stopScanBtn');
-      if (stopBtn) stopBtn.remove();
-    }).catch(err => console.error('Error stopping scanner:', err));
-  }
-}
-
-function onScanSuccess(decodedText) {
-  try {
-    // If the QR contains JSON data, extract the voucher code field
-    const data = JSON.parse(decodedText);
-    document.getElementById('voucherInput').value = data.code || decodedText;
-  } catch (e) {
-    document.getElementById('voucherInput').value = decodedText;
-  }
-  stopScanner();
-  // Automatically verify the scanned voucher
-  verifyVoucher();
-}
-
-// Clean up camera when leaving the page
-window.addEventListener('beforeunload', () => {
-  if (html5Qrcode && scannerRunning) {
-    html5Qrcode.stop().catch(() => {});
-  }
+// Close modal on backdrop click
+document.getElementById('redeemModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
 });
+
+loadFarmers();
 </script>
 
 </body>
